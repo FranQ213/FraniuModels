@@ -3,127 +3,156 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Demo sklepu — poprawiona wersja</title>
+  <title>Sklep — pełny widok (z auth, stock, galerią)</title>
   <style>
-    :root{--accent:#0b74de;--bg:#f7f8fb;--card:#fff;--muted:#6b7280}
+    :root{
+      --accent:#0b74de;
+      --bg:#f7f8fb;
+      --card:#fff;
+      --muted:#6b7280;
+      --shadow: 0 6px 18px rgba(17,24,39,0.04);
+    }
     *{box-sizing:border-box}
-    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:#111}
-    header{display:flex;align-items:center;gap:16px;padding:12px 18px;background:#fff;border-bottom:1px solid #e6eef9;position:sticky;top:0;z-index:60}
+    body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:#0b1220}
+    header{display:flex;align-items:center;gap:16px;padding:12px 18px;background:linear-gradient(180deg,#fff,#fbfdff);border-bottom:1px solid #e6eef9;position:sticky;top:0;z-index:50}
+    .logo-wrap{display:flex;align-items:center;gap:12px}
     .logo{width:56px;height:40px;display:flex;align-items:center;justify-content:center;background:#eef6ff;border-radius:8px;overflow:hidden}
-    .site-title{font-weight:700}
+    .logo img{max-width:100%;max-height:100%}
+    .site-title{font-weight:700;font-size:16px}
     .spacer{flex:1}
-    .cart-inline{font-size:14px;color:var(--muted);display:flex;gap:10px;align-items:center}
+    .header-controls{display:flex;gap:12px;align-items:center}
     .btn-small{padding:6px 10px;border-radius:8px;border:0;cursor:pointer;font-weight:600;background:#f3f7fb}
     .btn{padding:8px 12px;border-radius:8px;border:0;cursor:pointer;font-weight:600}
     .btn-primary{background:var(--accent);color:#fff}
     .btn-ghost{background:transparent;border:1px solid #e6eef9;color:var(--muted)}
-    .container{max-width:1100px;margin:24px auto;padding:0 18px}
+    .container{max-width:1100px;margin:28px auto;padding:0 18px}
+    .hero{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:18px}
+    .hero h1{margin:0;font-size:24px}
     .products{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
-    .card{background:var(--card);border-radius:12px;padding:12px;box-shadow:0 6px 18px rgba(17,24,39,0.04);display:flex;flex-direction:column;gap:8px;cursor:pointer}
-    .thumb{height:150px;border-radius:8px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;overflow:hidden}
+    .card{background:var(--card);border-radius:12px;padding:12px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px;cursor:pointer}
+    .thumb{height:160px;border-radius:8px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;overflow:hidden}
     .thumb img{width:100%;height:100%;object-fit:cover}
     .meta{display:flex;justify-content:space-between;align-items:center}
     .name{font-weight:600}
     .price{font-weight:700}
     .desc{color:var(--muted);font-size:13px}
-    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.35);display:none;align-items:center;justify-content:center;z-index:200}
-    .modal{background:#fff;padding:18px;border-radius:12px;max-width:920px;width:96%;box-shadow:0 10px 30px rgba(2,6,23,0.2);max-height:90vh;overflow:auto}
+    .actions{display:flex;gap:8px;align-items:center}
     .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;background:#111;color:#fff;padding:10px 14px;border-radius:10px;opacity:0;pointer-events:none;transition:all .28s ease}
     .toast.show{opacity:1}
-    .stock-bars{display:flex;gap:6px;margin-top:8px}
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.35);display:none;align-items:center;justify-content:center;z-index:200}
+    .modal{background:#fff;padding:18px;border-radius:12px;max-width:920px;width:96%;box-shadow:0 10px 30px rgba(2,6,23,0.2);max-height:90vh;overflow:auto}
+    .cart-view{background:var(--card);padding:16px;border-radius:12px;box-shadow:var(--shadow)}
+    .cart-list{display:flex;flex-direction:column;gap:12px}
+    .cart-item{display:flex;gap:12px;align-items:center}
+    .cart-item img{width:84px;height:64px;object-fit:cover;border-radius:8px}
+    .qty{display:flex;gap:6px;align-items:center}
+    .small{font-size:13px;color:var(--muted)}
+    .form-row input, .form-row select, textarea{padding:8px;border:1px solid #e6eef9;border-radius:8px}
+    .stock-bars{display:flex;gap:6px;margin-top:6px}
     .stock-bar{width:22px;height:10px;border-radius:3px;background:#e6e9ee}
     .fill-green{background:#22c55e}
     .fill-orange{background:#f59e0b}
     .fill-red{background:#ef4444}
     .fill-gray{background:#cbd5e1}
-    footer{margin:24px 0;color:var(--muted);text-align:center;font-size:13px}
-    @media (max-width:800px){ .thumb{height:120px} }
+    footer{margin:30px 0;color:var(--muted);text-align:center;font-size:13px}
+    @media (max-width:700px){
+      .thumb{height:120px}
+      .hero{flex-direction:column;align-items:flex-start}
+    }
   </style>
 </head>
 <body>
   <header>
-    <div style="display:flex;align-items:center;gap:12px">
-      <div class="logo"><img src="logo.png" alt="logo" style="max-width:100%;height:auto;display:block" onerror="this.style.display='none'"></div>
-      <div class="site-title">Mój sklep</div>
+    <div class="logo-wrap">
+      <a href="#" id="home-link" style="display:flex;align-items:center;text-decoration:none;color:inherit">
+        <div class="logo"><img id="logo-img" src="logo.png" alt="logo" onerror="this.style.display='none'"></div>
+      </a>
+      <div>
+        <div class="site-title">Mój sklep</div>
+        <div style="font-size:12px;color:var(--muted)">Demo — koszyk, logowanie, admin, stock</div>
+      </div>
     </div>
 
     <div class="spacer"></div>
 
-    <div style="display:flex;gap:12px;align-items:center">
+    <div class="header-controls" id="header-controls">
       <div id="user-area"></div>
       <div>Koszyk: <strong id="cart-count">0</strong></div>
       <button class="btn-small btn-primary" id="go-cart">Przejdź do koszyka</button>
     </div>
   </header>
 
-  <main class="container" id="app">
-    <!-- content rendered by JS -->
-  </main>
+  <main class="container" id="app"><!-- rendered by JS --></main>
 
-  <div id="modal-backdrop" class="modal-backdrop"><div class="modal"><div id="modal-content"></div></div></div>
+  <div id="modal-backdrop" class="modal-backdrop"><div class="modal" id="modal"><div id="modal-content"></div></div></div>
   <div id="toast" class="toast">Komunikat</div>
-  <footer>© Twoj sklep — demo</footer>
+  <footer>© Twój sklep — demo</footer>
 
 <script>
 (async function(){
-  // --- KONFIG ---
+  // ---- KONFIG & DANE ----
   const PRODUCTS = [
-    { id:'p1', name:'Produkt 1', price:1000, priceText:'10,00 PLN',
-      images:['https://images.unsplash.com/photo-1606813902820-4b3c6fb7f3e6?q=80&w=800&auto=format&fit=crop'],
-      img:'https://images.unsplash.com/photo-1606813902820-4b3c6fb7f3e6?q=80&w=800&auto=format&fit=crop',
-      description:'Opis Produktu 1', paylink:'' },
-    { id:'p2', name:'Produkt 2', price:2500, priceText:'25,00 PLN',
-      images:['https://images.unsplash.com/photo-1513708929623-0e9f39f2d1f3?q=80&w=800&auto=format&fit=crop'],
-      img:'https://images.unsplash.com/photo-1513708929623-0e9f39f2d1f3?q=80&w=800&auto=format&fit=crop',
-      description:'Opis Produktu 2', paylink:'' }
+    {
+      id: 'p1',
+      name: 'Produkt 1',
+      price: 1000,
+      priceText: '10,00 PLN',
+      images: ['https://images.unsplash.com/photo-1606813902820-4b3c6fb7f3e6?q=80&w=1200&auto=format&fit=crop'],
+      img: 'https://images.unsplash.com/photo-1606813902820-4b3c6fb7f3e6?q=80&w=1200&auto=format&fit=crop',
+      description: 'Pełny opis Produktu 1. Wymiary: 10x20cm. Materiał: próbka.',
+      paylink: ''
+    },
+    {
+      id: 'p2',
+      name: 'Produkt 2',
+      price: 2500,
+      priceText: '25,00 PLN',
+      images: ['https://images.unsplash.com/photo-1513708929623-0e9f39f2d1f3?q=80&w=1200&auto=format&fit=crop','https://images.unsplash.com/photo-1524758631624-e2822e304c36?q=80&w=1200&auto=format&fit=crop'],
+      img: 'https://images.unsplash.com/photo-1513708929623-0e9f39f2d1f3?q=80&w=1200&auto=format&fit=crop',
+      description: 'Pełny opis Produktu 2. Świetny wybór do domu.',
+      paylink: ''
+    }
   ];
-  const ADMIN_EMAIL = 'franiopatyk@gmail.com';
-  const ADMIN_PW = 'Musztarda25!!'; // will be hashed and stored locally
-  const CART_KEY = 'demo_cart_v1';
-  const USERS_KEY = 'demo_users_v1';
-  const CURRENT_USER = 'demo_current_user';
-  const STOCK_KEY = 'demo_stock_v1';
 
-  // --- HELPERS ---
+  const ADMIN_EMAIL = 'franiopatyk@gmail.com';
+  const ADMIN_PLAIN = 'Musztarda25!!'; // hashed locally
+  const CART_KEY = 'shop_demo_cart';
+  const USERS_KEY = 'shop_demo_users';
+  const CURRENT_USER = 'shop_demo_current';
+  const STOCK_KEY = 'shop_demo_stock';
+
+  // ---- HELPERS ----
   const $ = s => document.querySelector(s);
   const $$ = s => Array.from(document.querySelectorAll(s));
-  function toast(msg){
-    const t = $('#toast'); t.textContent = msg; t.classList.add('show');
-    setTimeout(()=> t.classList.remove('show'), 1600);
-  }
+  function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('show'); setTimeout(()=> t.classList.remove('show'), 1600); }
+  async function hashPassword(pass){ const enc = new TextEncoder(); const buff = enc.encode(pass); const h = await crypto.subtle.digest('SHA-256', buff); return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join(''); }
 
-  async function hashPassword(p){
-    const enc = new TextEncoder(); const buf = enc.encode(p);
-    const h = await crypto.subtle.digest('SHA-256', buf);
-    return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('');
-  }
-
-  function getUsers(){ try{ return JSON.parse(localStorage.getItem(USERS_KEY) || '[]'); }catch(e){ return []; } }
+  // ---- AUTH (localStorage demo) ----
+  function getUsers(){ try{ return JSON.parse(localStorage.getItem(USERS_KEY)||'[]'); }catch(e){ return []; } }
   function saveUsers(u){ localStorage.setItem(USERS_KEY, JSON.stringify(u)); }
   function getCurrentUser(){ try{ return JSON.parse(localStorage.getItem(CURRENT_USER) || 'null'); }catch(e){ return null; } }
   function setCurrentUser(u){ localStorage.setItem(CURRENT_USER, JSON.stringify(u)); renderHeaderUser(); }
   function logoutUser(){ localStorage.removeItem(CURRENT_USER); renderHeaderUser(); }
 
-  // ensure admin exists
   async function createAdminIfMissing(){
     const users = getUsers();
     if(!users.find(u=>u.email === ADMIN_EMAIL)){
-      const h = await hashPassword(ADMIN_PW);
-      users.push({ id:'admin', name:'Admin', email: ADMIN_EMAIL, passwordHash: h, role:'admin' });
+      const hash = await hashPassword(ADMIN_PLAIN);
+      users.push({ id:'u_admin', name:'Admin', email: ADMIN_EMAIL, passwordHash: hash, role:'admin' });
       saveUsers(users);
-      console.log('Admin utworzony lokalnie.');
+      console.log('Admin created locally');
     }
   }
 
-  async function registerUser({name,email,password}) {
+  async function registerUser({name,email,password}){
     const users = getUsers();
-    if(users.find(u=>u.email === email)) throw new Error('Użytkownik o takim e-mail już istnieje');
-    const h = await hashPassword(password);
-    const user = { id: 'u'+Date.now(), name, email, passwordHash: h, role: 'user' };
+    if(users.find(u=>u.email===email)) throw new Error('Użytkownik o takim e-mail już istnieje');
+    const hash = await hashPassword(password);
+    const user = { id: 'u' + Date.now(), name, email, passwordHash: hash, role:'user' };
     users.push(user); saveUsers(users); setCurrentUser({ id:user.id, name:user.name, email:user.email, role:user.role });
   }
 
-  async function loginUser({email,password}) {
+  async function loginUser({email,password}){
     const users = getUsers(); const h = await hashPassword(password);
     const u = users.find(x=>x.email === email && x.passwordHash === h);
     if(!u) throw new Error('Niepoprawny e-mail lub hasło');
@@ -132,12 +161,11 @@
 
   function updateUserProfile(changes){
     const users = getUsers(); const cur = getCurrentUser(); if(!cur) return;
-    const user = users.find(u=>u.id === cur.id || u.email === cur.email);
-    if(!user) return;
-    Object.assign(user, changes); saveUsers(users); setCurrentUser({ id:user.id, name:user.name, email:user.email, role:user.role });
+    const u = users.find(x=>x.id === cur.id || x.email === cur.email); if(!u) return;
+    Object.assign(u, changes); saveUsers(users); setCurrentUser({ id:u.id, name:u.name, email:u.email, role:u.role });
   }
 
-  // stock helpers
+  // ---- STOCK localStorage ----
   function loadStock(){
     try{
       const s = JSON.parse(localStorage.getItem(STOCK_KEY) || '{}');
@@ -151,290 +179,378 @@
   }
   function saveStock(obj){ localStorage.setItem(STOCK_KEY, JSON.stringify(obj)); }
   function getStock(id){ const s = loadStock(); return Number(s[id]||0); }
-  function setStock(id, val){ const s = loadStock(); s[id] = Math.max(0, Math.min(5, Number(val))); saveStock(s); }
+  function setStock(id,val){ const s = loadStock(); s[id] = Math.max(0, Math.min(5, Number(val))); saveStock(s); }
 
-  // cart
+  // ---- CART localStorage ----
   function getCart(){ try{ return JSON.parse(localStorage.getItem(CART_KEY) || '[]'); }catch(e){ return []; } }
-  function saveCart(c){ localStorage.setItem(CART_KEY, JSON.stringify(c)); updateCartCount(); }
-  function updateCartCount(){ const c = getCart().reduce((a,b)=>a + (b.qty||0), 0); $('#cart-count').textContent = c; }
-  function addToCart(id, qty=1){
-    const avail = getStock(id);
-    if(avail <= 0){ alert('Produkt niedostępny (brak na stanie).'); return; }
+  function saveCart(c){ localStorage.setItem(CART_KEY, JSON.stringify(c)); renderCartCount(); }
+  function renderCartCount(){ const count = getCart().reduce((s,i)=>s + (i.qty||0),0); $('#cart-count').textContent = count; }
+
+  function addToCart(id, qty = 1){
+    const available = getStock(id);
+    if(available <= 0){ alert('Produkt niedostępny (brak na stanie).'); return; }
     const cart = getCart(); const it = cart.find(x=>x.id === id);
     const want = (it ? it.qty : 0) + qty;
-    if(want > avail){ alert(`Nie możesz dodać ${qty} szt. — dostępne tylko ${avail} szt.`); return; }
+    if(want > available){ alert(`Dostępne tylko ${available} szt. — zmień ilość.`); return; }
     if(it) it.qty += qty; else { const p = PRODUCTS.find(x=>x.id===id); cart.push({ id: p.id, name: p.name, price: p.price, priceText: p.priceText, img: p.img, qty }); }
     saveCart(cart); toast('Dodano do koszyka');
   }
 
-  // render header + user area (always attach login button if not logged)
+  function changeQty(id, delta){
+    const cart = getCart(); const it = cart.find(x=>x.id===id); if(!it) return;
+    it.qty = Math.max(1, it.qty + delta);
+    // check against stock
+    const avail = getStock(id);
+    if(it.qty > avail){ it.qty = avail; alert(`Ilość ustawiona na max dostępne: ${avail}`); }
+    saveCart(cart);
+  }
+
+  // ---- UI: header & user area ----
   function renderHeaderUser(){
     const ua = $('#user-area'); ua.innerHTML = '';
     const cur = getCurrentUser();
     if(cur){
-      const wrap = document.createElement('div'); wrap.style.display = 'flex'; wrap.style.gap = '8px'; wrap.style.alignItems = 'center';
-      const name = document.createElement('div'); name.textContent = cur.name || cur.email; name.style.fontWeight = '700';
+      const wrap = document.createElement('div'); wrap.style.display='flex'; wrap.style.alignItems='center'; wrap.style.gap='8px';
+      const name = document.createElement('div'); name.textContent = cur.name || cur.email; name.style.fontWeight='700';
       wrap.appendChild(name);
       if(cur.role === 'admin' || cur.email === ADMIN_EMAIL){
-        const adminBtn = document.createElement('button'); adminBtn.className = 'btn-small'; adminBtn.textContent = 'Panel admina';
-        adminBtn.addEventListener('click', openAdminPanel);
-        wrap.appendChild(adminBtn);
+        const adminBtn = document.createElement('button'); adminBtn.className='btn-small'; adminBtn.textContent='Panel admina';
+        adminBtn.addEventListener('click', openAdminPanel); wrap.appendChild(adminBtn);
       }
-      const profBtn = document.createElement('button'); profBtn.className = 'btn-small'; profBtn.textContent = 'Profil';
-      profBtn.addEventListener('click', openProfileModal);
-      const outBtn = document.createElement('button'); outBtn.className = 'btn-small'; outBtn.textContent = 'Wyloguj';
-      outBtn.addEventListener('click', ()=>{ logoutUser(); renderApp(); });
-      wrap.appendChild(profBtn); wrap.appendChild(outBtn);
+      const profile = document.createElement('button'); profile.className='btn-small'; profile.textContent='Profil';
+      profile.addEventListener('click', openProfileModal);
+      const out = document.createElement('button'); out.className='btn-small'; out.textContent='Wyloguj';
+      out.addEventListener('click', ()=>{ logoutUser(); renderApp(); toast('Wylogowano'); });
+      wrap.appendChild(profile); wrap.appendChild(out);
       ua.appendChild(wrap);
     } else {
-      const btn = document.createElement('button'); btn.className = 'btn-small'; btn.textContent = 'Zaloguj / Rejestracja';
-      btn.addEventListener('click', openAuthModal);
-      ua.appendChild(btn);
+      const btn = document.createElement('button'); btn.className='btn-small'; btn.textContent='Zaloguj / Rejestracja';
+      btn.addEventListener('click', openAuthModal); ua.appendChild(btn);
     }
   }
 
-  // modal helpers
+  // ---- MODAL helpers ----
   function openModal(html){
     $('#modal-content').innerHTML = html;
     $('#modal-backdrop').style.display = 'flex';
   }
   function closeModal(){ $('#modal-backdrop').style.display = 'none'; }
 
-  // auth modal
+  // ---- AUTH modals ----
   function openAuthModal(){
     openModal(`
       <h2>Zaloguj się</h2>
-      <div style="display:flex;flex-direction:column;gap:8px">
+      <div class="form-row" style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
         <input id="m-email" placeholder="E-mail" />
         <input id="m-pass" type="password" placeholder="Hasło" />
-        <div style="display:flex;gap:8px">
+        <div style="display:flex;gap:8px;margin-top:6px">
           <button id="m-login" class="btn btn-primary">Zaloguj</button>
-          <button id="m-register" class="btn btn-ghost">Rejestracja</button>
+          <button id="m-register" class="btn btn-ghost">Zarejestruj</button>
           <button id="m-close" class="btn btn-ghost">Zamknij</button>
         </div>
       </div>
     `);
     $('#m-login').addEventListener('click', async ()=>{
-      try{
-        await loginUser({ email: $('#m-email').value.trim(), password: $('#m-pass').value });
-        closeModal(); renderApp(); toast('Zalogowano');
-      }catch(e){ alert(e.message); }
+      try{ await loginUser({ email: $('#m-email').value.trim(), password: $('#m-pass').value }); closeModal(); renderApp(); toast('Zalogowano'); }
+      catch(e){ alert(e.message); }
     });
-    $('#m-register').addEventListener('click', ()=> openRegisterModal());
+    $('#m-register').addEventListener('click', openRegisterModal);
     $('#m-close').addEventListener('click', closeModal);
   }
+
   function openRegisterModal(){
     openModal(`
       <h2>Rejestracja</h2>
-      <div style="display:flex;flex-direction:column;gap:8px">
+      <div class="form-row" style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
         <input id="r-name" placeholder="Imię i nazwisko" />
         <input id="r-email" placeholder="E-mail" />
         <input id="r-pass" type="password" placeholder="Hasło" />
-        <div style="display:flex;gap:8px">
+        <div style="display:flex;gap:8px;margin-top:6px">
           <button id="r-do" class="btn btn-primary">Zarejestruj</button>
           <button id="r-back" class="btn btn-ghost">Wróć</button>
         </div>
       </div>
     `);
     $('#r-do').addEventListener('click', async ()=>{
-      try{
-        await registerUser({ name: $('#r-name').value.trim(), email: $('#r-email').value.trim(), password: $('#r-pass').value });
-        closeModal(); renderApp(); toast('Zarejestrowano');
-      }catch(e){ alert(e.message); }
+      try{ await registerUser({ name: $('#r-name').value.trim(), email: $('#r-email').value.trim(), password: $('#r-pass').value }); closeModal(); renderApp(); toast('Zarejestrowano'); }
+      catch(e){ alert(e.message); }
     });
     $('#r-back').addEventListener('click', openAuthModal);
   }
 
-  // profile modal (edit name)
+  // ---- PROFILE modal ----
   function openProfileModal(){
     const cur = getCurrentUser(); if(!cur) return openAuthModal();
     openModal(`
       <h2>Profil</h2>
-      <div style="display:flex;flex-direction:column;gap:8px">
+      <div class="form-row" style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
         <input id="p-name" value="${escapeHtml(cur.name||'')}" />
-        <div style="display:flex;gap:8px">
+        <input id="p-email" value="${escapeHtml(cur.email||'')}" disabled />
+        <div style="display:flex;gap:8px;margin-top:6px">
           <button id="p-save" class="btn btn-primary">Zapisz</button>
           <button id="p-close" class="btn btn-ghost">Zamknij</button>
         </div>
       </div>
     `);
     $('#p-save').addEventListener('click', ()=>{
-      updateUserProfile({ name: $('#p-name').value.trim() });
-      closeModal(); renderApp(); toast('Zapisano profil');
+      updateUserProfile({ name: $('#p-name').value.trim() }); closeModal(); renderApp(); toast('Zapisano profil');
     });
     $('#p-close').addEventListener('click', closeModal);
   }
 
-  // admin panel
+  // ---- ADMIN panel ----
   function openAdminPanel(){
-    const stock = loadStock();
-    let html = '<h2>Panel admina — stan magazynowy (0-5)</h2><div style="display:flex;flex-direction:column;gap:8px">';
+    const s = loadStock();
+    let html = '<h2>Panel admina — stan magazynowy (0..5)</h2><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">';
     for(const p of PRODUCTS){
       html += `<div style="display:flex;align-items:center;gap:12px;padding:8px;border-radius:8px;border:1px solid #eef2ff">
         <div style="width:220px;font-weight:700">${escapeHtml(p.name)}</div>
-        <input type="range" min="0" max="5" value="${stock[p.id]||0}" data-id="${p.id}" class="admin-range">
-        <div class="small" data-val="${p.id}">${stock[p.id]||0}</div>
+        <input class="admin-range" type="range" min="0" max="5" value="${s[p.id]||0}" data-id="${p.id}">
+        <div class="small" data-val="${p.id}">${s[p.id]||0}</div>
       </div>`;
     }
-    html += '<div style="display:flex;gap:8px;margin-top:8px"><button id="save-stock" class="btn btn-primary">Zapisz</button><button id="close-admin" class="btn btn-ghost">Zamknij</button></div></div>';
+    html += '<div style="display:flex;gap:8px;margin-top:10px"><button id="admin-save" class="btn btn-primary">Zapisz</button><button id="admin-close" class="btn btn-ghost">Zamknij</button></div></div>';
     openModal(html);
-    $$('.admin-range').forEach(r=> r.addEventListener('input', ()=> {
-      const id = r.getAttribute('data-id'); const valEl = document.querySelector(`[data-val="${id}"]`);
-      if(valEl) valEl.textContent = r.value;
+    $$('.admin-range').forEach(r => r.addEventListener('input', ()=> {
+      const id = r.getAttribute('data-id'); const el = document.querySelector(`[data-val="${id}"]`); if(el) el.textContent = r.value;
     }));
-    $('#save-stock').addEventListener('click', ()=> {
-      const ranges = $$('.admin-range'); const s = loadStock();
-      ranges.forEach(r=> s[r.getAttribute('data-id')] = Number(r.value));
-      saveStock(s); closeModal(); renderApp(); toast('Zapisano stany');
+    $('#admin-save').addEventListener('click', ()=> {
+      const ranges = $$('.admin-range'); const obj = loadStock();
+      ranges.forEach(r => obj[r.getAttribute('data-id')] = Number(r.value));
+      saveStock(obj); closeModal(); renderApp(); toast('Zapisano stany magazynowe');
     });
-    $('#close-admin').addEventListener('click', closeModal);
+    $('#admin-close').addEventListener('click', closeModal);
   }
 
-  // product modal with stock bars and admin slider
+  // ---- PRODUCT modal (gallery + stock bars + admin slider) ----
   function renderStockBars(productId){
     const level = getStock(productId);
-    const container = document.createElement('div'); container.className = 'stock-bars';
+    const wrap = document.createElement('div'); wrap.className = 'stock-bars';
     if(level <= 0){
-      for(let i=0;i<5;i++){ const b = document.createElement('div'); b.className = 'stock-bar fill-gray'; container.appendChild(b); }
-      return container;
+      for(let i=0;i<5;i++){ const b = document.createElement('div'); b.className = 'stock-bar fill-gray'; wrap.appendChild(b); }
+      return wrap;
     }
-    let cls = 'fill-green'; if(level >=4) cls = 'fill-green'; else if(level >=2) cls = 'fill-orange'; else if(level === 1) cls = 'fill-red';
-    for(let i=0;i<5;i++){ const b = document.createElement('div'); b.className = i < level ? `stock-bar ${cls}` : 'stock-bar fill-gray'; container.appendChild(b); }
-    return container;
+    let cls = 'fill-green'; if(level >= 4) cls='fill-green'; else if(level >=2) cls='fill-orange'; else if(level === 1) cls='fill-red';
+    for(let i=0;i<5;i++){ const b = document.createElement('div'); b.className = i < level ? `stock-bar ${cls}` : 'stock-bar fill-gray'; wrap.appendChild(b); }
+    return wrap;
   }
 
   function openProductModal(id){
     const p = PRODUCTS.find(x=>x.id === id); if(!p) return;
-    const imgs = (p.images && p.images.length) ? p.images : [p.img];
+    const imgs = p.images && p.images.length ? p.images : [p.img];
     const stockLevel = getStock(id);
     openModal(`
-      <div style="display:flex;justify-content:space-between;align-items:center"><h2>${escapeHtml(p.name)}</h2><button id="p-close" class="btn btn-ghost">Zamknij</button></div>
-      <div style="display:flex;gap:16px;flex-wrap:wrap">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h2>${escapeHtml(p.name)}</h2>
+        <div><button id="prod-close" class="btn btn-ghost">Zamknij</button></div>
+      </div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px">
         <div style="flex:1;min-width:320px">
-          <img id="p-main" src="${imgs[0]}" style="width:100%;height:320px;object-fit:contain;border-radius:8px;background:#f7fbff" />
-          <div style="display:flex;gap:8px;margin-top:8px">${imgs.map((u,i)=>`<img class="p-thumb" data-idx="${i}" src="${u}" style="width:80px;height:64px;object-fit:cover;border-radius:6px;cursor:pointer;border:2px solid ${i===0? '#0b74de':'transparent'}">`).join('')}</div>
+          <img id="prod-main" src="${imgs[0]}" style="width:100%;height:420px;object-fit:contain;border-radius:8px;background:#f7fbff" />
+          <div style="display:flex;gap:8px;margin-top:8px;overflow:auto">${imgs.map((u,i)=>`<img class="prod-thumb" data-idx="${i}" src="${u}" style="width:84px;height:64px;object-fit:cover;border-radius:6px;cursor:pointer;border:2px solid ${i===0? '#0b74de' : 'transparent'}">`).join('')}</div>
         </div>
-        <div style="width:320px;display:flex;flex-direction:column;gap:12px">
+        <div style="width:360px;display:flex;flex-direction:column;gap:12px">
           <div style="font-weight:700">${escapeHtml(p.name)}</div>
-          <div style="color:var(--accent);font-weight:700">${p.priceText}</div>
-          <div style="color:var(--muted)">${escapeHtml(p.description||'')}</div>
-          <div><strong>Stan magazynowy:</strong><div id="modal-stock-bars"></div></div>
-          <div><label>Ilość: <input id="p-qty" type="number" min="1" value="1" style="width:70px;margin-left:8px"></label></div>
-          <div style="display:flex;gap:8px">
-            <button id="p-add" class="btn btn-primary">Dodaj do koszyka</button>
-            <button id="p-close2" class="btn btn-ghost">Zamknij</button>
-          </div>
-          <div id="admin-stock-editor" style="display:none;margin-top:8px">
-            <div class="small">Edytuj stan (admin):</div>
+          <div style="font-size:18px;font-weight:700;color:var(--accent)">${p.priceText}</div>
+          <div class="small" style="color:var(--muted)">${escapeHtml(p.description||'')}</div>
+          <div><strong>Stan magazynowy:</strong><div id="modal-stock-area"></div></div>
+          <div style="display:flex;gap:8px;align-items:center"><label>Ilość: <input id="prod-qty" type="number" min="1" value="1" style="width:70px;margin-left:8px;padding:6px;border-radius:6px;border:1px solid #e6eef9"></label></div>
+          <div style="display:flex;gap:8px"><button id="prod-add" class="btn btn-primary">Dodaj do koszyka</button><button id="prod-close2" class="btn btn-ghost">Zamknij</button></div>
+
+          <div id="admin-stock-area" style="margin-top:10px;display:none">
+            <div class="small">Edycja stanu (admin):</div>
             <input id="admin-stock-range" type="range" min="0" max="5" value="${stockLevel}">
-            <div class="small">Poziom: <span id="admin-stock-val">${stockLevel}</span></div>
+            <div class="small">Wybrany poziom: <span id="admin-stock-val">${stockLevel}</span></div>
             <div style="margin-top:6px"><button id="save-admin-stock" class="btn btn-primary">Zapisz</button></div>
           </div>
+
         </div>
       </div>
     `);
 
     // attach events
-    $('#p-close').addEventListener('click', closeModal);
-    $('#p-close2').addEventListener('click', closeModal);
-    $$('.p-thumb').forEach(t=> t.addEventListener('click', ()=> { $('#p-main').src = t.src; }));
-    $('#modal-stock-bars').appendChild(renderStockBars(id));
-    $('#p-add').addEventListener('click', ()=> {
-      const q = Math.max(1, parseInt($('#p-qty').value||'1',10));
-      addToCart(id, q); closeModal();
+    $('#prod-close').addEventListener('click', closeModal);
+    $('#prod-close2').addEventListener('click', closeModal);
+    $$('.prod-thumb').forEach(t => t.addEventListener('click', ()=> { $('#prod-main').src = t.src; }));
+    $('#modal-stock-area').appendChild(renderStockBars(id));
+
+    $('#prod-add').addEventListener('click', ()=> {
+      const q = Math.max(1, parseInt($('#prod-qty').value||'1',10));
+      addToCart(id, q);
+      closeModal();
     });
 
-    // admin editor visible?
+    // admin editor visibility
     const cur = getCurrentUser(); const isAdmin = cur && (cur.role === 'admin' || cur.email === ADMIN_EMAIL);
     if(isAdmin){
-      $('#admin-stock-editor').style.display = 'block';
-      $('#admin-stock-range').addEventListener('input', ()=> $('#admin-stock-val').textContent = $('#admin-stock-range').value);
+      $('#admin-stock-area').style.display = 'block';
+      const range = $('#admin-stock-range'); const val = $('#admin-stock-val');
+      range.addEventListener('input', ()=> val.textContent = range.value);
       $('#save-admin-stock').addEventListener('click', ()=> {
-        setStock(id, Number($('#admin-stock-range').value)); // refresh displayed bars
-        $('#modal-stock-bars').innerHTML = ''; $('#modal-stock-bars').appendChild(renderStockBars(id));
-        renderApp(); toast('Zapisano stan');
+        setStock(id, Number(range.value));
+        $('#modal-stock-area').innerHTML = ''; $('#modal-stock-area').appendChild(renderStockBars(id));
+        renderApp(); toast('Zapisano stan magazynowy');
       });
     }
   }
 
-  // render products grid
+  // ---- Render products grid ----
   function renderProducts(){
-    const app = $('#app'); app.innerHTML = `<section style="margin-bottom:16px"><h1>Produkty</h1></section><section class="products" id="grid"></section>`;
+    const app = $('#app'); app.innerHTML = `
+      <section class="hero"><div><h1>Produkty</h1><div class="small" style="margin-top:6px;color:var(--muted)">Kliknij produkt, aby zobaczyć szczegóły i galerię.</div></div></section>
+      <section class="products" id="grid"></section>`;
     const grid = $('#grid');
     for(const p of PRODUCTS){
       const card = document.createElement('article'); card.className = 'card';
-      card.innerHTML = `<div class="thumb"><img src="${p.img}" alt="${escapeHtml(p.name)}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'600\\' height=\\'400\\'><rect width=\\'100%\\' height=\\'100%\\' fill=\\'#f1f5f9\\'/><text x=\\'50%\\' y=\\'50%\\' dominant-baseline=\\'middle\\' text-anchor=\\'middle\\' fill=\\'#c7d2e6\\' font-size=\\'20\\'>Brak obrazu</text></svg>'" /></div>
+      card.innerHTML = `
+        <div class="thumb"><img src="${p.img}" alt="${escapeHtml(p.name)}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'600\\' height=\\'400\\'><rect width=\\'100%\\' height=\\'100%\\' fill=\\'#f1f5f9\\'/><text x=\\'50%\\' y=\\'50%\\' dominant-baseline=\\'middle\\' text-anchor=\\'middle\\' fill=\\'#c7d2e6\\' font-size=\\'20\\'>Brak obrazu</text></svg>'"></div>
         <div class="meta"><div class="name">${escapeHtml(p.name)}</div><div class="price">${p.priceText}</div></div>
-        <div class="desc small">${escapeHtml((p.description||'').slice(0,100))}</div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button class="btn btn-primary" data-add="${p.id}">Dodaj do koszyka</button>
-          <button class="btn btn-ghost" data-copy="${escapeHtml(p.paylink||'')}">Kopiuj link</button>
-        </div>
+        <div class="desc small">${escapeHtml((p.description||'').slice(0,110))}</div>
+        <div class="actions"><button class="btn btn-primary" data-add="${p.id}">Dodaj do koszyka</button><button class="btn btn-ghost" data-copy="${escapeHtml(p.paylink||'')}">Kopiuj link</button></div>
       `;
       // append stock bars
-      const bars = renderStockBars(p.id);
-      card.appendChild(bars);
-      // clicking card opens modal (but not when clicking a button)
+      card.appendChild(renderStockBars(p.id));
+      // clicking card opens modal (not when clicking a button)
       card.addEventListener('click', (e)=> { if(e.target.closest('button')) return; openProductModal(p.id); });
       grid.appendChild(card);
     }
-    // attach button handlers
+    // attach actions
     $$('[data-add]').forEach(b => b.addEventListener('click', ev => { ev.stopPropagation(); addToCart(b.getAttribute('data-add')); }));
     $$('[data-copy]').forEach(b => b.addEventListener('click', ev => { ev.stopPropagation(); const url = b.getAttribute('data-copy'); if(!url) return alert('Brak linku'); navigator.clipboard && navigator.clipboard.writeText(url).then(()=>toast('Skopiowano link')); }));
   }
 
-  // cart placeholder (keeps focus on products); we keep mini behavior
+  // ---- CART view (modal, full) ----
   function openCart(){
     const cart = getCart();
-    let html = '<h2>Koszyk</h2>';
-    if(cart.length === 0) html += '<div class="small">Twój koszyk jest pusty.</div>';
-    else {
-      html += '<div style="display:flex;flex-direction:column;gap:8px">';
-      for(const it of cart){ html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;border-radius:8px;border:1px solid #f1f5f9"><div><div style="font-weight:700">${escapeHtml(it.name)}</div><div class="small">${it.priceText} × ${it.qty}</div></div><div><button data-dec="${it.id}" class="btn btn-ghost">-</button><button data-inc="${it.id}" class="btn btn-ghost">+</button></div></div>`; }
-      html += '</div>';
+    const shippingOptions = [{id:'inpost',name:'Paczkomat InPost', price:150},{id:'pickup',name:'Odbiór osobisty (gratis)', price:0}];
+    let html = `<h2>Koszyk</h2><div style="margin-top:8px">`;
+    if(cart.length === 0){
+      html += `<div class="small">Twój koszyk jest pusty.</div>`;
+    } else {
+      html += `<div class="cart-list">`;
+      for(const it of cart){
+        html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;border-radius:8px;border:1px solid #f1f5f9">
+          <div style="display:flex;gap:12px;align-items:center"><img src="${it.img}" style="width:84px;height:64px;object-fit:cover;border-radius:6px"/><div><div style="font-weight:700">${escapeHtml(it.name)}</div><div class="small">${it.priceText} × ${it.qty}</div></div></div>
+          <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end"><div class="qty"><button data-dec="${it.id}" class="btn btn-ghost">-</button><span style="margin:0 8px">${it.qty}</span><button data-inc="${it.id}" class="btn btn-ghost">+</button></div><button data-remove="${it.id}" class="btn btn-ghost">Usuń</button></div>
+        </div>`;
+      }
+      html += `</div>`;
+      // summary + form
+      const subtotal = cart.reduce((s,i)=>s + i.price * i.qty, 0);
+      html += `
+        <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:12px;align-items:flex-start">
+          <div style="min-width:260px">
+            <div class="small" style="margin-bottom:6px">Dostawa</div>
+            ${shippingOptions.map(s=>`<label style="display:block"><input type="radio" name="shipping" value="${s.id}" ${s.id==='inpost' ? 'checked' : ''}> ${s.name} (${(s.price/100).toFixed(2)} PLN)</label>`).join('')}
+            <div class="small" style="margin-top:8px;color:var(--muted)">Paczkomat wpisz w polu Paczkomat (poniżej), jeśli wybierzesz InPost.</div>
+          </div>
+          <div style="min-width:360px">
+            <div class="small" style="margin-bottom:6px">Dane klienta</div>
+            <div class="form-row" style="display:flex;flex-direction:column;gap:8px">
+              <input id="cust-name" placeholder="Imię i nazwisko" />
+              <input id="cust-email" placeholder="E-mail" />
+              <input id="cust-phone" placeholder="Telefon" />
+              <input id="cust-address" placeholder="Adres (ulica, kod, miasto)" />
+              <input id="cust-paczkomat" placeholder="Paczkomat InPost (np. 123XYZ)" style="display:none" />
+            </div>
+          </div>
+          <div style="margin-left:auto;min-width:260px">
+            <div class="small">Razem:</div>
+            <div style="font-weight:700;font-size:18px" id="cart-total">${(subtotal/100).toFixed(2)} PLN</div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button id="cart-checkout" class="btn btn-primary">Przejdź do płatności</button>
+              <button id="cart-close" class="btn btn-ghost">Zamknij</button>
+            </div>
+          </div>
+        </div>
+      `;
     }
-    html += '<div style="display:flex;gap:8px;margin-top:12px"><button id="cart-close" class="btn btn-ghost">Zamknij</button></div>';
+    html += '</div>';
     openModal(html);
+
+    // events
     $('#cart-close').addEventListener('click', closeModal);
-    $$('[data-dec]').forEach(b => b.addEventListener('click', ()=> { changeQty(b.getAttribute('data-dec'), -1); renderApp(); }));
-    $$('[data-inc]').forEach(b => b.addEventListener('click', ()=> { changeQty(b.getAttribute('data-inc'), +1); renderApp(); }));
+    $$('[data-dec]').forEach(b=> b.addEventListener('click', ()=> { changeQty(b.getAttribute('data-dec'), -1); openCart(); }));
+    $$('[data-inc]').forEach(b=> b.addEventListener('click', ()=> { changeQty(b.getAttribute('data-inc'), +1); openCart(); }));
+    $$('[data-remove]').forEach(b=> b.addEventListener('click', ()=> { const id = b.getAttribute('data-remove'); let c = getCart(); c = c.filter(x=>x.id !== id); saveCart(c); openCart(); }));
+
+    // fill profile data if logged
+    const cur = getCurrentUser();
+    if(cur){
+      if($('#cust-name')) $('#cust-name').value = cur.name || '';
+      if($('#cust-email')) $('#cust-email').value = cur.email || '';
+    }
+
+    // show/hide paczkomat depending on shipping radio
+    $$('input[name=shipping]').forEach(r => r.addEventListener('change', ()=> {
+      const val = document.querySelector('input[name=shipping]:checked').value;
+      $('#cust-paczkomat').style.display = val === 'inpost' ? 'block' : 'none';
+      updateCartTotal();
+    }));
+
+    $('#cart-checkout').addEventListener('click', ()=> {
+      // must be logged in to checkout
+      if(!getCurrentUser()){ closeModal(); openAuthModal(); alert('Zaloguj się, aby dokończyć zamówienie.'); return; }
+      // validate customer data
+      const name = $('#cust-name') ? $('#cust-name').value.trim() : '';
+      const email = $('#cust-email') ? $('#cust-email').value.trim() : '';
+      const phone = $('#cust-phone') ? $('#cust-phone').value.trim() : '';
+      const shipping = document.querySelector('input[name=shipping]:checked').value;
+      const pacz = $('#cust-paczkomat') ? $('#cust-paczkomat').value.trim() : '';
+      if(!name || !email || !phone){ alert('Wypełnij imię, e-mail i telefon.'); return; }
+      if(shipping === 'inpost' && !pacz){ alert('Podaj numer paczkomatu.'); return; }
+      // check stock before finalizing
+      const cart = getCart();
+      for(const it of cart){
+        const av = getStock(it.id);
+        if(it.qty > av){ alert(`Produkt ${it.name} ma tylko ${av} szt. — zmień ilość.`); return; }
+      }
+      // save last_order and reduce stock for demo (COD or mock)
+      const subtotal = cart.reduce((s,i)=>s + i.price * i.qty, 0);
+      const shCost = document.querySelector('input[name=shipping]:checked').value === 'inpost' ? 150 : 0;
+      const order = { cart, total: subtotal + shCost, shipping: document.querySelector('input[name=shipping]:checked').value, customer:{ name, email, phone, address: $('#cust-address')?$('#cust-address').value.trim():'' , paczkomat: pacz }, created: new Date().toISOString(), userId: getCurrentUser().id };
+      localStorage.setItem('last_order', JSON.stringify(order));
+      // For demo: reduce stock and clear cart
+      cart.forEach(it => { const s = loadStock(); s[it.id] = Math.max(0, s[it.id] - it.qty); saveStock(s); });
+      saveCart([]); closeModal(); renderApp(); toast('Zamówienie zapisane (demo).');
+    });
+
+    function updateCartTotal(){
+      const cart = getCart();
+      const subtotal = cart.reduce((s,i)=>s + i.price * i.qty, 0);
+      const shipping = document.querySelector('input[name=shipping]:checked');
+      const shipCost = shipping ? (shipping.value === 'inpost' ? 150 : 0) : 0;
+      if($('#cart-total')) $('#cart-total').textContent = ((subtotal + shipCost)/100).toFixed(2) + ' PLN';
+    }
   }
 
-  function changeQty(id, delta){
-    const cart = getCart(); const it = cart.find(x=>x.id === id); if(!it) return;
-    it.qty = Math.max(1, it.qty + delta);
-    saveCart(cart);
-  }
-
-  // main render
+  // ---- RENDER APP ----
   function renderApp(){
     try{
       renderHeaderUser();
       renderProducts();
-      updateCartCount();
+      renderCartCount();
     }catch(e){
-      console.error('Render error', e);
-      toast('Błąd aplikacji — sprawdź konsolę');
+      console.error('render error', e); toast('Błąd aplikacji — sprawdź konsolę (F12)');
     }
   }
 
-  // small helpers
-  function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  // ---- UTILS ----
+  function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-  // init
+  // ---- INIT ----
   try{
     await createAdminIfMissing();
     loadStock();
-    $('#go-cart').addEventListener('click', ()=> openCart());
-    // allow closing modal by clicking backdrop
-    $('#modal-backdrop').addEventListener('click', (e)=> { if(e.target.id === 'modal-backdrop') closeModal(); });
+    $('#go-cart').addEventListener('click', openCart);
+    $('#home-link').addEventListener('click', e => { e.preventDefault(); renderApp(); });
+    $('#modal-backdrop').addEventListener('click', e => { if(e.target.id === 'modal-backdrop') closeModal(); });
     renderApp();
   }catch(err){
-    console.error('Init error', err);
-    alert('Błąd inicjalizacji — sprawdź konsolę (F12).');
+    console.error('init error', err); alert('Błąd inicjalizacji — sprawdź konsolę (F12).');
   }
+
 })();
 </script>
-
 </body>
 </html>
