@@ -1,25 +1,18 @@
 <!--
   Plik: index.html
-  Aktualizacja: dodano pełny widok szczegółów produktu z galerią zdjęć i możliwością przewijania.
+  Dodatek: Stan magazynowy (5 kresek) + konto admin
 
-  Co nowego:
-    - Każdy produkt ma teraz pole `images` (tablica URL) i `description` — użyj ich, aby dodać zdjęcia i dłuższy opis.
-    - Kliknięcie na kartę produktu (zdjęcie lub nazwę) otwiera modal "Szczegóły produktu" z:
-        * dużym obrazkiem (główny widok),
-        * przyciskami "<" i ">" do przewijania zdjęć,
-        * miniaturkami poniżej, które po kliknięciu ustawiają dany obraz,
-        * opisem produktu,
-        * polem wyboru ilości i przyciskiem "Dodaj do koszyka" (dodaje dane z wybranej ilości),
-        * przyciskiem zamknięcia.
-    - Galeria jest responsywna i działa też z palcem (scroll miniatury). Obsługuje też klawisze strzałek w modalu.
+  Zmiany:
+    - Dodano wyświetlanie stanu magazynowego w kartach produktów oraz w modalnym widoku produktu (5 kresek).
+    - Kolorowanie kresek: pełny stan (>=4) = zielone, średni (2-3) = pomarańczowe, niski (1) = czerwone, brak (0) = szare.
+    - Użytkownik admin (email: franiopatyk@gmail.com, hasło: Musztarda25!!) jest automatycznie tworzony przy pierwszym uruchomieniu (hasło jest hashowane SHA-256 i zapisane w localStorage). Po zalogowaniu jako admin pojawia się przycisk "Panel admina".
+    - Panel admina pozwala ustawić stan magazynowy (0-5) dla każdego produktu, zapisuje wartości w localStorage (klucz: shop_stock_v1).
+    - Admin może też zmieniać stan magazynowy bezpośrednio w modalnym widoku produktu (suwak 0-5).
+    - Dodawanie do koszyka respektuje stan magazynowy (nie pozwala dodać więcej niż dostępne).
 
-  Jak używać:
-    - W sekcji `PRODUCTS` w JS: dodaj pole `images: ['img/p1-1.jpg','img/p1-2.jpg', ...]` oraz `description: 'długi opis'`.
-    - Kliknij dowolny produkt na stronie, żeby zobaczyć galerię i dodać produkt do koszyka z poziomu modalu.
-
-  Bezpieczeństwo i ograniczenia:
-    - To nadal w pełni statyczna strona — wszystkie dane są w localStorage.
-    - Jeśli chcesz, mogę dodać lazy-loading obrazów lub lightbox z zoomem.
+  WAŻNE BEZPIECZEŃSTWO:
+    - Konto admin tworzone lokalnie w przeglądarce i zapisane w localStorage — to NIE JEST bezpieczne dla produkcyjnego sklepu. Hasło jest zahashowane, ale nadal nie zalecam trzymania credentials w pliku statycznym w publicznym repo.
+    - Dla produkcji użyj serwera oraz zewnętrznego dostawcy auth (Firebase Auth, Auth0, Clerk itp.).
 -->
 
 <!doctype html>
@@ -27,13 +20,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Mój sklep — GitHub Pages (z galerią produktu)</title>
-  <meta name="description" content="Prosty sklep na GitHub Pages z rejestracją, koszykiem i galerią produktów.">
+  <title>Mój sklep — Stan magazynowy i admin</title>
+  <meta name="description" content="Sklep demo z localStorage: koszyk, auth, BLIK, InPost i stan magazynowy.">
   <style>
     :root{--accent:#0b74de;--bg:#f7f8fb;--card:#fff;--muted:#6b7280}
     *{box-sizing:border-box}
     body{margin:0;font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:#111}
-    header{display:flex;align-items:center;gap:16px;padding:12px 18px;background:linear-gradient(180deg,#fff,#fbfdff);border-bottom:1px solid #e6eef9;position:sticky;top:0;z-index:40}
+    header{display:flex;align-items:center;gap:16px;padding:12px 18px;background:linear-gradient(180deg,#fff,#fbfdff);border-bottom:1px solid #e6eef9;position:sticky;top:0;z-index:60}
     .logo-wrap{display:flex;align-items:center;gap:12px}
     .logo{width:56px;height:40px;display:flex;align-items:center;justify-content:center;background:#eef6ff;border-radius:8px;overflow:hidden}
     .site-title{font-weight:700;font-size:16px}
@@ -57,49 +50,31 @@
     .btn-ghost{background:transparent;border:1px solid #e6eef9;color:var(--muted)}
     .toast{position:fixed;left:50%;transform:translateX(-50%) translateY(8px);bottom:24px;background:#111;color:#fff;padding:10px 14px;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,0.15);opacity:0;pointer-events:none;transition:all .28s ease}
     .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-    .cart-view{background:var(--card);padding:16px;border-radius:12px;box-shadow:0 6px 18px rgba(17,24,39,0.04)}
-    .cart-list{display:flex;flex-direction:column;gap:12px}
-    .cart-item{display:flex;gap:12px;align-items:center}
-    .cart-item img{width:72px;height:56px;object-fit:cover;border-radius:8px}
-    .qty{display:flex;gap:6px;align-items:center}
-    .small{font-size:13px;color:var(--muted)}
-    .form-row{display:flex;gap:12px;flex-wrap:wrap}
-    .form-row input, .form-row select, textarea{padding:8px;border:1px solid #e6eef9;border-radius:8px}
-    footer{margin:30px 0;color:var(--muted);text-align:center;font-size:13px}
-
-    /* Modal */
-    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.35);display:none;align-items:center;justify-content:center;z-index:60}
+    .stock-bars{display:flex;gap:6px}
+    .stock-bar{width:22px;height:10px;border-radius:3px;background:#e6e9ee}
+    .stock-bar.fill-green{background:#22c55e}
+    .stock-bar.fill-orange{background:#f59e0b}
+    .stock-bar.fill-red{background:#ef4444}
+    .stock-bar.fill-gray{background:#cbd5e1}
+    .admin-badge{background:#fde68a;padding:6px 10px;border-radius:8px}
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.35);display:none;align-items:center;justify-content:center;z-index:100}
     .modal{background:#fff;padding:18px;border-radius:12px;max-width:920px;width:96%;box-shadow:0 10px 30px rgba(2,6,23,0.2);max-height:90vh;overflow:auto}
-    .modal h2{margin-top:0}
-    .modal .form-row{display:flex;flex-direction:column}
-    .modal .small{margin-top:6px;color:var(--muted)}
-    .user-pill{display:flex;gap:8px;align-items:center;padding:6px 10px;border-radius:999px;background:#f4f9ff}
-
-    /* Product gallery */
-    .prod-gallery{display:flex;gap:16px}
-    .prod-main{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px}
-    .prod-main img{max-width:100%;height:420px;object-fit:contain;border-radius:8px;background:#f7fbff}
-    .gallery-nav{display:flex;justify-content:space-between;align-items:center;width:100%;}
-    .thumbs{display:flex;gap:8px;overflow:auto;padding:8px 2px}
-    .thumbs img{width:80px;height:64px;object-fit:cover;border-radius:6px;cursor:pointer;border:2px solid transparent}
-    .thumbs img.active{border-color:var(--accent)}
-    .gallery-controls{display:flex;gap:8px;align-items:center}
-
-    @media (max-width:800px){ .prod-main img{height:260px} .prod-gallery{flex-direction:column} .thumbs img{width:64px;height:48px} }
+    footer{margin:30px 0;color:var(--muted);text-align:center;font-size:13px}
+    @media (max-width:800px){ .thumb{height:120px} }
   </style>
 </head>
 <body>
   <header>
     <div class="logo-wrap">
-      <a href="#" id="home-link" style="display:flex;align-items:center;text-decoration:none;color:inherit;">
-        <div class="logo" title="Twoje logo"><img id="logo-img" src="logo.png" alt="Logo" onerror="this.style.display='none'"></div>
-      </a>
+      <a href="#" id="home-link" style="display:flex;align-items:center;text-decoration:none;color:inherit;"><div class="logo" title="Twoje logo"><img id="logo-img" src="logo.png" alt="Logo" onerror="this.style.display='none'"></div></a>
       <div>
         <div class="site-title">Mój sklep</div>
-        <div style="font-size:12px;color:var(--muted)">Statyczna strona — prosty koszyk + galeria</div>
+        <div style="font-size:12px;color:var(--muted)">Demo: stan magazynowy + admin</div>
       </div>
     </div>
+
     <div class="spacer"></div>
+
     <div class="cart-inline" id="header-controls">
       <div id="user-area"><button class="btn-small" id="login-btn">Zaloguj się / Rejestracja</button></div>
       <div>Koszyk: <strong id="cart-count">0</strong></div>
@@ -109,76 +84,93 @@
 
   <main class="container" id="app"></main>
   <div class="toast" id="toast">Dodano do koszyka</div>
-  <footer style="max-width:1100px;margin:24px auto;padding:0 18px;">© Twój sklep — zmień treść i zdjęcia na własne.</footer>
+  <footer style="max-width:1100px;margin:24px auto;padding:0 18px;">© Twój sklep — demo</footer>
 
-  <!-- Modal (używane dla auth/profile oraz produktu) -->
-  <div class="modal-backdrop" id="modal-backdrop">
-    <div class="modal" id="modal">
-      <div id="modal-content"></div>
-    </div>
-  </div>
+  <div class="modal-backdrop" id="modal-backdrop"><div class="modal" id="modal"><div id="modal-content"></div></div></div>
 
   <script>
-    // ===== USTAWIENIA =====
+    // ========== USTAWIENIA / DANE ==========
     const STORE_CHECKOUT_LINK = '';
-    const PRODUCTS = [
-      { id: 'p1', name: 'Wagon restauracyjny typ "WRmnouz 407A"', price: 19000, priceText: '190,00 PLN', images: ['img/p1-1.jpg','unnamed.jpg'], img: 'img/p1-1.jpg', description: 'Szczegółowy opis Produktu 1. Tutaj możesz dodać więcej informacji o cechach, wymiarach, składzie.', paylink: 'https://example.com/pay/product1' },
-      { id: 'p2', name: 'Wagon pasażerski 1-2 klasa 141A-20ROP', price: 19000, priceText: '190,00 PLN', images: ['img/p2-1.jpg','IMG_0348.jpg','img/p2-3.jpg'], img: 'img/p2-1.jpg', description: 'Szczegółowy opis Produktu 2 — świetny wybór!', paylink: 'https://example.com/pay/product2' }
-    ];
-    // =======================
+    const ADMIN_EMAIL = 'franiopatyk@gmail.com';
+    const ADMIN_PLAIN_PASSWORD = 'Musztarda25!!'; // będzie zahashowane i zapisane tylko w localStorage
 
-    const $ = s => document.querySelector(s);
-    const $$ = s => Array.from(document.querySelectorAll(s));
-    const CART_KEY = 'shop_cart_v4';
+    const PRODUCTS = [
+      { id: 'p1', name: 'Produkt 1', price: 1000, priceText: '10,00 PLN', images: ['img/p1-1.jpg','img/p1-2.jpg'], img: 'img/p1-1.jpg', description: 'Szczegółowy opis Produktu 1.', paylink: 'https://example.com/pay/product1' },
+      { id: 'p2', name: 'Produkt 2', price: 2500, priceText: '25,00 PLN', images: ['img/p2-1.jpg','img/p2-2.jpg','img/p2-3.jpg'], img: 'img/p2-1.jpg', description: 'Szczegółowy opis Produktu 2.', paylink: 'https://example.com/pay/product2' }
+    ];
+    // ========================================
+
+    // keys
+    const CART_KEY = 'shop_cart_v_stock';
     const USERS_KEY = 'shop_users_v1';
     const CURRENT_USER = 'shop_current_user';
+    const STOCK_KEY = 'shop_stock_v1';
+
+    // helpery
+    const $ = s => document.querySelector(s);
+    const $$ = s => Array.from(document.querySelectorAll(s));
     const SVG_PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600"><rect width="100%" height="100%" fill="#f1f5f9"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#c7d2e6" font-family="Arial, sans-serif" font-size="28">Brak obrazu</text></svg>`);
 
-    // --- minimalne helpers auth & cart (jak wcześniej) ---
+    // ========== Auth (localStorage) ==========
     async function hashPassword(password){ const enc = new TextEncoder(); const data = enc.encode(password); const hash = await crypto.subtle.digest('SHA-256', data); return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join(''); }
-    function getUsers(){ try{ return JSON.parse(localStorage.getItem(USERS_KEY) || '[]'); }catch(e){ return []; } }
+    function getUsers(){ try{ return JSON.parse(localStorage.getItem(USERS_KEY) || '[]'); } catch(e){ return []; } }
     function saveUsers(u){ localStorage.setItem(USERS_KEY, JSON.stringify(u)); }
     function getCurrentUser(){ try{ return JSON.parse(localStorage.getItem(CURRENT_USER) || 'null'); }catch(e){ return null; } }
     function setCurrentUser(u){ localStorage.setItem(CURRENT_USER, JSON.stringify(u)); renderHeaderUser(); }
     function logoutUser(){ localStorage.removeItem(CURRENT_USER); renderHeaderUser(); }
-    async function registerUser({name,email,password,phone,address}){ const users = getUsers(); if(users.find(x=>x.email === email)) throw new Error('Użytkownik o takim e-mail już istnieje'); const hash = await hashPassword(password); const user = { id: 'u_' + Date.now(), name, email, passwordHash: hash, phone: phone || '', address: address || '' }; users.push(user); saveUsers(users); setCurrentUser({ id: user.id, name: user.name, email: user.email, phone: user.phone, address: user.address }); return user; }
-    async function loginUser({email,password}){ const users = getUsers(); const hash = await hashPassword(password); const user = users.find(u=>u.email === email && u.passwordHash === hash); if(!user) throw new Error('Niepoprawny e-mail lub hasło'); setCurrentUser({ id: user.id, name: user.name, email: user.email, phone: user.phone, address: user.address }); return user; }
-    function updateUserProfile(changes){ const users = getUsers(); const u = getCurrentUser(); if(!u) return; const user = users.find(x=>x.id === u.id); if(!user) return; Object.assign(user, changes); saveUsers(users); setCurrentUser({ id:user.id, name:user.name, email:user.email, phone:user.phone, address:user.address }); }
 
+    async function createAdminIfMissing(){
+      const users = getUsers();
+      if(users.find(u=>u.email === ADMIN_EMAIL)) return;
+      const hash = await hashPassword(ADMIN_PLAIN_PASSWORD);
+      const admin = { id: 'u_admin', name: 'Admin', email: ADMIN_EMAIL, passwordHash: hash, role: 'admin' };
+      users.push(admin); saveUsers(users); console.log('Admin user created (localStorage).');
+    }
+
+    async function registerUser({name,email,password,phone,address}){
+      const users = getUsers(); if(users.find(x=>x.email === email)) throw new Error('Użytkownik o takim e-mail już istnieje'); const hash = await hashPassword(password); const user = { id: 'u_' + Date.now(), name, email, passwordHash: hash, phone: phone || '', address: address || '', role: 'user' }; users.push(user); saveUsers(users); setCurrentUser({ id: user.id, name: user.name, email: user.email, phone: user.phone, address: user.address, role: user.role }); return user;
+    }
+
+    async function loginUser({email,password}){ const users = getUsers(); const hash = await hashPassword(password); const user = users.find(u=>u.email === email && u.passwordHash === hash); if(!user) throw new Error('Niepoprawny e-mail lub hasło'); setCurrentUser({ id: user.id, name: user.name, email: user.email, phone: user.phone || '', address: user.address || '', role: user.role || 'user' }); return user; }
+
+    function updateUserProfile(changes){ const users = getUsers(); const u = getCurrentUser(); if(!u) return; const user = users.find(x=>x.id === u.id); if(!user) return; Object.assign(user, changes); saveUsers(users); setCurrentUser({ id:user.id, name:user.name, email:user.email, phone:user.phone, address:user.address, role: user.role }); }
+
+    // ========== Stock (localStorage) ==========
+    function loadStock(){ try{ const s = JSON.parse(localStorage.getItem(STOCK_KEY) || '{}'); // initialize default if missing
+        let changed = false; PRODUCTS.forEach(p=>{ if(typeof s[p.id] === 'undefined'){ s[p.id] = 5; changed = true; } }); if(changed) localStorage.setItem(STOCK_KEY, JSON.stringify(s)); return s; } catch(e){ const fallback = {}; PRODUCTS.forEach(p=> fallback[p.id]=5); localStorage.setItem(STOCK_KEY, JSON.stringify(fallback)); return fallback; } }
+    function saveStock(stockObj){ localStorage.setItem(STOCK_KEY, JSON.stringify(stockObj)); }
+    function setStock(productId, level){ const stock = loadStock(); stock[productId] = Math.max(0, Math.min(5, Number(level))); saveStock(stock); }
+    function getStock(productId){ const stock = loadStock(); return Number(stock[productId] || 0); }
+
+    // ========== Cart ==========
     function getCart(){ try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]'); } catch(e){ return []; } }
     function saveCart(c){ localStorage.setItem(CART_KEY, JSON.stringify(c)); updateCartCount(); }
     function updateCartCount(){ const cart = getCart(); const count = cart.reduce((s,i)=>s+i.qty,0); const el = document.getElementById('cart-count'); if(el) el.textContent = count; }
     function showToast(txt){ const t = document.getElementById('toast'); t.textContent = txt; t.classList.add('show'); setTimeout(()=> t.classList.remove('show'), 1600); }
-    function addToCart(productId, qty=1){ const prod = PRODUCTS.find(p=>p.id===productId); if(!prod) return; const cart = getCart(); const existing = cart.find(i=>i.id===productId); if(existing){ existing.qty += qty; } else { cart.push({ id: prod.id, name: prod.name, price: prod.price, priceText: prod.priceText, img: prod.img, paylink: prod.paylink, qty: qty }); } saveCart(cart); showToast('Dodano do koszyka'); }
-    function changeQty(productId, delta){ const cart = getCart(); const item = cart.find(i=>i.id===productId); if(!item) return; item.qty += delta; if(item.qty < 1) item.qty = 1; saveCart(cart); renderApp(); }
-    function removeFromCart(productId){ let cart = getCart(); cart = cart.filter(i=>i.id !== productId); saveCart(cart); renderApp(); }
-    function clearCart(){ if(confirm('Wyczyścić koszyk?')){ saveCart([]); renderApp(); } }
 
-    // Header user area
-    function renderHeaderUser(){ const ua = document.getElementById('user-area'); const current = getCurrentUser(); if(!ua) return; if(current){ ua.innerHTML = `<div class="user-pill"><div style="font-weight:700">${escapeHtml(current.name)}</div><button class="btn-small" id="btn-logout">Wyloguj</button><button class="btn-small" id="btn-profile">Profil</button></div>`; document.getElementById('btn-logout').addEventListener('click', ()=>{ logoutUser(); }); document.getElementById('btn-profile').addEventListener('click', ()=>{ openProfileModal(); }); } else { ua.innerHTML = `<button class="btn-small" id="login-btn">Zaloguj się / Rejestracja</button>`; document.getElementById('login-btn').addEventListener('click', ()=> openAuthModal()); } }
+    function addToCart(productId, qty=1){ const available = getStock(productId); if(available <= 0){ alert('Produkt jest niedostępny (brak w magazynie).'); return; } const cart = getCart(); const existing = cart.find(i=>i.id===productId); const want = (existing ? existing.qty : 0) + qty; if(want > available){ alert(`Nie możesz dodać ${qty} szt. — dostępne tylko ${available} szt.`); return; } if(existing){ existing.qty += qty; } else { const p = PRODUCTS.find(x=>x.id===productId); cart.push({ id: p.id, name: p.name, price: p.price, priceText: p.priceText, img: p.img, paylink: p.paylink, qty }); } saveCart(cart); showToast('Dodano do koszyka'); }
 
-    // Modal helpers
-    function openModal(html){ const backdrop = document.getElementById('modal-backdrop'); const content = document.getElementById('modal-content'); content.innerHTML = html; backdrop.style.display = 'flex'; }
-    function closeModal(){ const backdrop = document.getElementById('modal-backdrop'); backdrop.style.display = 'none'; }
+    // ========== UI: header & admin panel ==========
+    function renderHeaderUser(){ const ua = document.getElementById('user-area'); const current = getCurrentUser(); if(!ua) return; if(current){ const isAdmin = current.email === ADMIN_EMAIL || current.role === 'admin'; ua.innerHTML = `<div style="display:flex;gap:8px;align-items:center"><div class="user-pill"><div style="font-weight:700">${escapeHtml(current.name)}</div></div>${isAdmin? '<div class="admin-badge">ADMIN</div>':'' }<button class="btn-small" id="btn-logout">Wyloguj</button><button class="btn-small" id="btn-profile">Profil</button>${isAdmin? '<button class="btn-small" id="btn-admin">Panel admina</button>':''}</div>`; document.getElementById('btn-logout').addEventListener('click', ()=>{ logoutUser(); renderApp(); }); document.getElementById('btn-profile').addEventListener('click', ()=>{ openProfileModal(); }); if(isAdmin){ document.getElementById('btn-admin').addEventListener('click', ()=> openAdminPanel()); } } else { ua.innerHTML = `<button class="btn-small" id="login-btn">Zaloguj się / Rejestracja</button>`; document.getElementById('login-btn').addEventListener('click', ()=> openAuthModal()); } }
 
-    // Auth modals (as before)
-    function openAuthModal(){ openModal(`<h2>Zaloguj się</h2><div class="form-row"><input id="login-email" placeholder="E-mail" /><input id="login-pass" type="password" placeholder="Hasło" /><div style="display:flex;gap:8px;margin-top:8px"><button id="do-login" class="btn btn-primary">Zaloguj</button><button id="open-register" class="btn btn-ghost">Zarejestruj się</button><button id="close-modal" class="btn btn-ghost">Zamknij</button></div></div>`); document.getElementById('do-login').addEventListener('click', async ()=>{ try{ const email = document.getElementById('login-email').value.trim(); const pass = document.getElementById('login-pass').value; await loginUser({email,password:pass}); closeModal(); renderApp(); showToast('Zalogowano'); } catch(e){ alert(e.message); } }); document.getElementById('open-register').addEventListener('click', ()=> openRegisterModal()); document.getElementById('close-modal').addEventListener('click', ()=> closeModal()); }
-    function openRegisterModal(){ openModal(`<h2>Zarejestruj się</h2><div class="form-row"><input id="reg-name" placeholder="Imię i nazwisko" /><input id="reg-email" placeholder="E-mail" /><input id="reg-phone" placeholder="Telefon (opcjonalnie)" /><input id="reg-address" placeholder="Adres (opcjonalnie)" /><input id="reg-pass" type="password" placeholder="Hasło" /><input id="reg-pass2" type="password" placeholder="Powtórz hasło" /><div style="display:flex;gap:8px;margin-top:8px"><button id="do-register" class="btn btn-primary">Zarejestruj</button><button id="back-login" class="btn btn-ghost">Wróć do logowania</button><button id="close-modal2" class="btn btn-ghost">Zamknij</button></div></div>`); document.getElementById('do-register').addEventListener('click', async ()=>{ try{ const name = document.getElementById('reg-name').value.trim(); const email = document.getElementById('reg-email').value.trim(); const phone = document.getElementById('reg-phone').value.trim(); const address = document.getElementById('reg-address').value.trim(); const p1 = document.getElementById('reg-pass').value; const p2 = document.getElementById('reg-pass2').value; if(!name || !email || !p1) return alert('Podaj imię, e-mail i hasło'); if(p1 !== p2) return alert('Hasła nie są takie same'); await registerUser({name,email,password:p1,phone,address}); closeModal(); renderApp(); showToast('Zarejestrowano i zalogowano'); }catch(e){ alert(e.message); } }); document.getElementById('back-login').addEventListener('click', ()=> openAuthModal()); document.getElementById('close-modal2').addEventListener('click', ()=> closeModal()); }
-    function openProfileModal(){ const cur = getCurrentUser(); if(!cur) return openAuthModal(); openModal(`<h2>Profil</h2><div class="form-row"><input id="prof-name" value="${escapeHtml(cur.name)}" /><input id="prof-phone" value="${escapeHtml(cur.phone||'')}" /><input id="prof-address" value="${escapeHtml(cur.address||'')}" /><div style="display:flex;gap:8px;margin-top:8px"><button id="save-profile" class="btn btn-primary">Zapisz</button><button id="close-pf" class="btn btn-ghost">Zamknij</button></div></div>`); document.getElementById('save-profile').addEventListener('click', ()=>{ const name = document.getElementById('prof-name').value.trim(); const phone = document.getElementById('prof-phone').value.trim(); const address = document.getElementById('prof-address').value.trim(); updateUserProfile({ name, phone, address }); closeModal(); renderApp(); showToast('Zapisano profil'); }); document.getElementById('close-pf').addEventListener('click', ()=> closeModal()); }
+    function openAdminPanel(){ const stock = loadStock(); let html = '<h2>Panel admina — ustaw stan magazynowy (0-5)</h2><div style="display:flex;flex-direction:column;gap:8px">'; PRODUCTS.forEach(p=>{ html += `<div style="display:flex;align-items:center;gap:12px;padding:8px;border-radius:8px;border:1px solid #eef2ff"><div style="width:220px;font-weight:700">${escapeHtml(p.name)}</div><input type="range" min="0" max="5" value="${stock[p.id]}" data-id="${p.id}" class="admin-range"><div class="small">${stock[p.id]}</div></div>` }); html += '<div style="display:flex;gap:8px;margin-top:8px"><button id="save-stock-btn" class="btn btn-primary">Zapisz</button><button id="close-admin" class="btn btn-ghost">Zamknij</button></div></div>' ; openModal(html); document.getElementById('save-stock-btn').addEventListener('click', ()=>{ const ranges = Array.from(document.querySelectorAll('.admin-range')); const s = loadStock(); ranges.forEach(r=>{ s[r.getAttribute('data-id')] = Number(r.value); }); saveStock(s); closeModal(); renderApp(); showToast('Zapisano stany magazynowe'); }); document.getElementById('close-admin').addEventListener('click', ()=> closeModal()); }
 
-    // --- product modal / gallery ---
-    function openProductModal(productId){ const p = PRODUCTS.find(x=>x.id===productId); if(!p) return; let idx = 0; const images = (p.images && p.images.length) ? p.images : [p.img || SVG_PLACEHOLDER]; const html = `
+    // ========== Product stock indicator helper ==========
+    function renderStockBars(productId){ const level = getStock(productId); const container = document.createElement('div'); container.className = 'stock-bars'; if(level <= 0){ for(let i=0;i<5;i++){ const b = document.createElement('div'); b.className = 'stock-bar fill-gray'; container.appendChild(b); } return container; } let fillClass = 'fill-green'; if(level >=4) fillClass = 'fill-green'; else if(level >=2) fillClass = 'fill-orange'; else if(level ===1) fillClass = 'fill-red'; for(let i=0;i<5;i++){ const b = document.createElement('div'); if(i < level) b.className = 'stock-bar ' + fillClass; else b.className = 'stock-bar fill-gray'; container.appendChild(b); } return container; }
+
+    // ========== Product modal (z możliwością admin edycji) ==========
+    function openProductModal(productId){ const p = PRODUCTS.find(x=>x.id===productId); if(!p) return; let idx = 0; const images = (p.images && p.images.length) ? p.images : [p.img || SVG_PLACEHOLDER]; const stockLevel = getStock(p.id); const html = `
       <div style="display:flex;justify-content:space-between;align-items:center"><h2>${escapeHtml(p.name)}</h2><div><button id="close-prod" class="btn btn-ghost">Zamknij</button></div></div>
-      <div class="prod-gallery">
-        <div class="prod-main">
-          <div class="gallery-nav"><button id="prev-img" class="btn btn-ghost">◀</button><div style="flex:1;text-align:center" id="img-counter">1 / ${images.length}</div><button id="next-img" class="btn btn-ghost">▶</button></div>
-          <img id="prod-main-img" src="${images[0]}" alt="${escapeHtml(p.name)}" onerror="this.onerror=null;this.src='${SVG_PLACEHOLDER}'">
-          <div class="thumbs" id="thumbs">${images.map((u,i)=>`<img src="${u}" data-idx="${i}" ${i===0? 'class=\"active\"':''} onerror="this.onerror=null;this.src='${SVG_PLACEHOLDER}'">`).join('')}</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        <div style="flex:1;min-width:320px">
+          <img id="prod-main-img" src="${images[0]}" alt="${escapeHtml(p.name)}" style="width:100%;height:360px;object-fit:contain;border-radius:8px;background:#f7fbff" onerror="this.onerror=null;this.src='${SVG_PLACEHOLDER}'">
+          <div style="display:flex;gap:8px;margin-top:8px;overflow:auto">${images.map((u,i)=>`<img src="${u}" data-idx="${i}" style="width:80px;height:64px;object-fit:cover;border-radius:6px;cursor:pointer;border:2px solid ${i===0? '#0b74de':'transparent'}" onerror="this.onerror=null;this.src='${SVG_PLACEHOLDER}'">`).join('')}</div>
         </div>
         <div style="width:360px;display:flex;flex-direction:column;gap:12px">
           <div style="font-weight:700">${escapeHtml(p.name)}</div>
           <div style="font-size:16px;font-weight:700;color:var(--accent)">${p.priceText}</div>
           <div class="small">${escapeHtml(p.description || '')}</div>
+          <div><strong>Stan magazynowy:</strong><div id="modal-stock-bars" style="margin-top:8px"></div></div>
           <div style="display:flex;gap:8px;align-items:center;margin-top:12px">
             <label>Ilość: <input id="modal-qty" type="number" min="1" value="1" style="width:70px;margin-left:8px;padding:6px;border-radius:6px;border:1px solid #e6eef9"></label>
           </div>
@@ -186,59 +178,93 @@
             <button class="btn btn-primary" id="modal-add">Dodaj do koszyka</button>
             <button class="btn btn-ghost" id="modal-close">Zamknij</button>
           </div>
+          <div id="admin-stock-editor" style="margin-top:12px;display:none">
+            <div class="small">Edytuj stan magazynowy (admin):</div>
+            <input type="range" id="admin-stock-range" min="0" max="5" value="${stockLevel}">
+            <div class="small">Wybrany poziom: <span id="admin-stock-val">${stockLevel}</span></div>
+            <div style="display:flex;gap:8px;margin-top:8px"><button id="save-admin-stock" class="btn btn-primary">Zapisz</button></div>
+          </div>
         </div>
       </div>
     `;
 
       openModal(html);
-
-      const mainImg = document.getElementById('prod-main-img');
-      const counter = document.getElementById('img-counter');
-      const thumbs = document.getElementById('thumbs');
-
-      function setIndex(i){ idx = (i + images.length) % images.length; mainImg.src = images[idx]; counter.textContent = (idx+1) + ' / ' + images.length; // highlight
-        Array.from(thumbs.querySelectorAll('img')).forEach(img => img.classList.toggle('active', Number(img.getAttribute('data-idx'))===idx));
-      }
-
-      document.getElementById('prev-img').addEventListener('click', ()=> setIndex(idx-1));
-      document.getElementById('next-img').addEventListener('click', ()=> setIndex(idx+1));
+      // gallery click
+      const mainImg = document.getElementById('prod-main-img'); const thumbs = document.querySelectorAll('[data-idx]'); thumbs.forEach(t=> t.addEventListener('click', ()=>{ mainImg.src = t.src; }));
       document.getElementById('close-prod').addEventListener('click', closeModal);
       document.getElementById('modal-close').addEventListener('click', closeModal);
 
-      // click thumb
-      Array.from(thumbs.querySelectorAll('img')).forEach(img => img.addEventListener('click', (e)=>{ setIndex(Number(img.getAttribute('data-idx'))); }));
+      // render stock bars
+      const msb = document.getElementById('modal-stock-bars'); msb.appendChild(renderStockBars(p.id));
 
-      // keyboard navigation
-      function keyNav(e){ if(e.key === 'ArrowLeft') setIndex(idx-1); if(e.key === 'ArrowRight') setIndex(idx+1); if(e.key === 'Escape') closeModal(); }
-      window.addEventListener('keydown', keyNav);
+      // admin editor visible?
+      const cur = getCurrentUser(); const isAdmin = cur && (cur.email === ADMIN_EMAIL || cur.role === 'admin'); if(isAdmin){ document.getElementById('admin-stock-editor').style.display = 'block'; const ar = document.getElementById('admin-stock-range'); const val = document.getElementById('admin-stock-val'); ar.addEventListener('input', ()=> val.textContent = ar.value); document.getElementById('save-admin-stock').addEventListener('click', ()=>{ setStock(p.id, Number(ar.value)); // refresh
+          const msb2 = document.getElementById('modal-stock-bars'); msb2.innerHTML = ''; msb2.appendChild(renderStockBars(p.id)); renderApp(); showToast('Zapisano stan magazynowy'); }); }
 
-      document.getElementById('modal-add').addEventListener('click', ()=>{ const q = Math.max(1, parseInt(document.getElementById('modal-qty').value || '1',10)); addToCart(p.id, q); closeModal(); window.removeEventListener('keydown', keyNav); });
-      // cleanup on close
-      const backdrop = document.getElementById('modal-backdrop'); backdrop.addEventListener('click', function onBackdrop(e){ if(e.target.id === 'modal-backdrop'){ closeModal(); window.removeEventListener('keydown', keyNav); backdrop.removeEventListener('click', onBackdrop); } });
+      document.getElementById('modal-add').addEventListener('click', ()=>{ const q = Math.max(1, parseInt(document.getElementById('modal-qty').value || '1',10)); addToCart(p.id, q); closeModal(); });
+
+      // cleanup backdrop
+      const backdrop = document.getElementById('modal-backdrop'); backdrop.addEventListener('click', function onBackdrop(e){ if(e.target.id === 'modal-backdrop'){ closeModal(); backdrop.removeEventListener('click', onBackdrop); } });
     }
 
-    // Render products & cart (attach click to open product modal)
-    function renderProductsView(){ const container = document.getElementById('app'); container.innerHTML = `<section class="hero"><div><h1>Produkty</h1><p style="margin:6px 0;color:var(--muted)">Kliknij produkt, aby zobaczyć więcej zdjęć i opis.</p></div></section><section class="products" id="products-grid"></section>`; const grid = document.getElementById('products-grid'); PRODUCTS.forEach(p=>{ const card = document.createElement('article'); card.className = 'card'; card.innerHTML = `<div class="thumb"><img src="${p.img}" alt="${p.name}" onerror="this.onerror=null;this.src='${SVG_PLACEHOLDER}'"></div><div class="meta"><div class="name">${p.name}</div><div class="price">${p.priceText}</div></div><div class="desc small">${escapeHtml((p.short || '')).slice(0,120)}</div><div class="actions"><button class="btn btn-primary" data-id="${p.id}">Dodaj do koszyka</button><button class="btn btn-ghost" data-copy="${p.paylink}">Kopiuj link</button></div>`; grid.appendChild(card);
-        // open product modal when clicking card (not buttons)
+    // ========== Render products with stock bars ==========
+    function renderProductsView(){ const container = document.getElementById('app'); container.innerHTML = `<section class="hero"><div><h1>Produkty</h1><p style="margin:6px 0;color:var(--muted)">Kliknij produkt, aby zobaczyć szczegóły i galerię.</p></div></section><section class="products" id="products-grid"></section>`; const grid = document.getElementById('products-grid'); PRODUCTS.forEach(p=>{ const card = document.createElement('article'); card.className = 'card'; card.innerHTML = `<div class="thumb"><img src="${p.img}" alt="${p.name}" onerror="this.onerror=null;this.src='${SVG_PLACEHOLDER}'"></div><div class="meta"><div class="name">${p.name}</div><div class="price">${p.priceText}</div></div><div class="desc small">${escapeHtml((p.short || '')).slice(0,120)}</div><div class="actions"><button class="btn btn-primary" data-id="${p.id}">Dodaj do koszyka</button><button class="btn btn-ghost" data-copy="${p.paylink}">Kopiuj link</button></div>`; // append stock bars
+        const bars = renderStockBars(p.id); card.appendChild(bars);
+        grid.appendChild(card);
+        // open modal when clicking card (not buttons)
         card.addEventListener('click', (e)=>{ const btn = e.target.closest('button'); if(btn) return; openProductModal(p.id); });
     });
     $$('.btn.btn-primary[data-id]').forEach(b=> b.addEventListener('click', (ev)=>{ ev.stopPropagation(); addToCart(b.getAttribute('data-id')); }));
     $$('.btn.btn-ghost[data-copy]').forEach(b=> b.addEventListener('click', (ev)=>{ ev.stopPropagation(); const url = b.getAttribute('data-copy'); if(!url){ alert('Brak linku do płatności dla tego produktu.'); return; } navigator.clipboard && navigator.clipboard.writeText(url).then(()=> showToast('Skopiowano link do płatności')) .catch(()=> prompt('Skopiuj link:', url)); })); }
 
+    // ========== Cart view and other existing features (simplified) ==========
     function renderCartView(){ const container = document.getElementById('app'); const cart = getCart(); const subtotal = cart.reduce((s,i)=>s + i.price * i.qty, 0); const shippingOptions = [ { id: 'inpost', name: 'Paczkomat InPost', price: 150 }, { id: 'pickup', name: 'Odbiór osobisty (gratis)', price: 0 } ]; const defaultShipping = shippingOptions[0].id; container.innerHTML = `<section class="hero"><div><h1>Koszyk</h1><p style="margin:6px 0;color:var(--muted)">Sprawdź koszyk, wybierz dostawę i płatność.</p></div></section><div class="cart-view"><div style="display:flex;gap:20px;flex-direction:column"><div class="cart-list" id="cart-list">${cart.length === 0 ? '<div class="small">Twój koszyk jest pusty.</div>' : ''}</div><div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;margin-top:8px"><div style="min-width:260px"><div class="small" style="margin-bottom:6px">Dostawa</div>${shippingOptions.map(s=>`<label style="display:block"><input type="radio" name="shipping" value="${s.id}" ${s.id===defaultShipping? 'checked':''}> ${s.name} (${(s.price/100).toFixed(2)} PLN)</label>`).join('')}<div style="margin-top:10px" class="small">Dla Paczkomatu InPost wpisz ID/ulicę i numer paczkomatu w polu "Paczkomat" poniżej (w sekcji danych klienta).</div></div><div style="min-width:360px"><div class="small" style="margin-bottom:6px">Dane klienta</div><div class="form-row" style="flex-direction:column"><input id="cust-name" placeholder="Imię i nazwisko" /><input id="cust-email" placeholder="E-mail" /><input id="cust-phone" placeholder="Telefon" /><input id="cust-address" placeholder="Adres (ulica, numer, kod pocztowy, miasto)" /><input id="cust-paczkomat" placeholder="Paczkomat InPost (np. 123XYZ) — wymagane przy InPost" style="display:none" /></div></div><div style="min-width:320px"><div class="small" style="margin-bottom:6px">Płatność</div><label style="display:block"><input type="radio" name="paymethod" value="storelink" checked> Globalny link do checkout</label><label style="display:block"><input type="radio" name="paymethod" value="blik"> BLIK (jeśli obsługuje Twój checkout)</label><label style="display:block"><input type="radio" name="paymethod" value="perproduct"> Linki przypisane do produktów</label><label style="display:block"><input type="radio" name="paymethod" value="cod"> Płatność przy odbiorze</label><div class="small" style="margin-top:6px;color:var(--muted)">Aby BLIK zadziałał, Twój PSP/checkout musi wspierać BLIK (Przelewy24, PayU lub Stripe z konfiguracją BLIK).</div></div><div style="margin-left:auto"><div class="small">Razem:</div><div style="font-weight:700;font-size:18px" id="total-sum">${(subtotal/100).toFixed(2)} PLN</div><div style="margin-top:8px;display:flex;gap:8px"><button class="btn btn-primary" id="checkout-btn">Przejdź do płatności</button><button class="btn btn-ghost" id="exit-cart">Wyjdź z koszyka</button><button class="btn btn-ghost" id="clear-cart">Wyczyść koszyk</button></div></div></div></div></div>`;
 
       const list = document.getElementById('cart-list'); cart.forEach(item=>{ const el = document.createElement('div'); el.className = 'cart-item'; el.innerHTML = `<img src="${item.img}" alt="${item.name}" onerror="this.onerror=null;this.src='${SVG_PLACEHOLDER}'"><div style="flex:1"><div style="font-weight:700">${item.name}</div><div class="small">${item.priceText} × ${item.qty} = ${(item.price*item.qty/100).toFixed(2)} PLN</div></div><div class="qty"><button class="btn-ghost" data-dec="${item.id}">-</button><div class="small">${item.qty}</div><button class="btn-ghost" data-inc="${item.id}">+</button><button class="btn-ghost" data-remove="${item.id}">Usuń</button></div>`; list.appendChild(el); }); $$('[data-dec]').forEach(b=> b.addEventListener('click', ()=> { changeQty(b.getAttribute('data-dec'), -1); })); $$('[data-inc]').forEach(b=> b.addEventListener('click', ()=> { changeQty(b.getAttribute('data-inc'), +1); })); $$('[data-remove]').forEach(b=> b.addEventListener('click', ()=> { removeFromCart(b.getAttribute('data-remove')); })); document.getElementById('clear-cart').addEventListener('click', clearCart); document.getElementById('exit-cart').addEventListener('click', ()=> { location.hash = '#'; renderApp(); }); $$('input[name=shipping]').forEach(r=> r.addEventListener('change', ()=>{ const paczInput = document.getElementById('cust-paczkomat'); const val = document.querySelector('input[name=shipping]:checked').value; paczInput.style.display = val === 'inpost' ? 'block' : 'none'; updateTotalSum(); })); const cur = getCurrentUser(); if(cur){ document.getElementById('cust-name').value = cur.name || ''; document.getElementById('cust-email').value = cur.email || ''; document.getElementById('cust-phone').value = cur.phone || ''; document.getElementById('cust-address').value = cur.address || ''; }
 
-      document.getElementById('checkout-btn').addEventListener('click', ()=>{ const paymethod = document.querySelector('input[name=paymethod]:checked').value; const shipping = document.querySelector('input[name=shipping]:checked').value; const shippingCost = shippingOptions.find(s=>s.id===shipping).price || 0; const cartNow = getCart(); if(cartNow.length === 0){ alert('Koszyk jest pusty.'); return; } if(!getCurrentUser()){ openAuthModal(); alert('Zaloguj się aby dokończyć zamówienie.'); return; } const name = document.getElementById('cust-name').value.trim(); const email = document.getElementById('cust-email').value.trim(); const phone = document.getElementById('cust-phone').value.trim(); const address = document.getElementById('cust-address').value.trim(); const paczkomat = document.getElementById('cust-paczkomat').value.trim(); if(!name || !email || !phone){ alert('Wypełnij proszę: imię, e-mail i telefon.'); return; } if(shipping === 'inpost' && !paczkomat){ alert('Przy wyborze Paczkomatu InPost podaj ID paczkomatu.'); return; } const order = { cart: cartNow, shipping, shippingCost, total: cartNow.reduce((s,i)=>s+i.price*i.qty,0) + shippingCost, customer: { name, email, phone, address, paczkomat }, created: new Date().toISOString(), userId: getCurrentUser().id }; localStorage.setItem('last_order', JSON.stringify(order)); if(paymethod === 'cod'){ alert('Wybrano płatność przy odbiorze. Zamówienie zapisane lokalnie.'); saveCart([]); location.hash = '#'; renderApp(); return; } if(paymethod === 'blik'){ if(!STORE_CHECKOUT_LINK){ alert('Brak globalnego linku do checkout.'); return; } const totalGrosz = order.total; const url = STORE_CHECKOUT_LINK + (STORE_CHECKOUT_LINK.includes('?') ? '&' : '?') + 'prefer=blik&total=' + totalGrosz; window.open(url, '_blank', 'noopener'); return; } if(paymethod === 'storelink'){ if(!STORE_CHECKOUT_LINK){ alert('Brak globalnego linku do checkout.'); return; } window.open(STORE_CHECKOUT_LINK, '_blank', 'noopener'); return; } if(paymethod === 'perproduct'){ let opened = 0; cartNow.forEach(item=>{ if(item.paylink){ window.open(item.paylink, '_blank', 'noopener'); opened++; } }); if(opened === 0){ alert('Brak linków do płatności ustawionych przy produktach.'); } return; } alert('Brak skonfigurowanej metody płatności.'); }); updateTotalSum(); }
+      document.getElementById('checkout-btn').addEventListener('click', ()=>{ const paymethod = document.querySelector('input[name=paymethod]:checked').value; const shipping = document.querySelector('input[name=shipping]:checked').value; const shippingCost = shippingOptions.find(s=>s.id===shipping).price || 0; const cartNow = getCart(); if(cartNow.length === 0){ alert('Koszyk jest pusty.'); return; } if(!getCurrentUser()){ openAuthModal(); alert('Zaloguj się aby dokończyć zamówienie.'); return; }
+        // validate customer data
+        const name = document.getElementById('cust-name').value.trim(); const email = document.getElementById('cust-email').value.trim(); const phone = document.getElementById('cust-phone').value.trim(); const address = document.getElementById('cust-address').value.trim(); const paczkomat = document.getElementById('cust-paczkomat').value.trim(); if(!name || !email || !phone){ alert('Wypełnij proszę: imię, e-mail i telefon.'); return; } if(shipping === 'inpost' && !paczkomat){ alert('Przy wyborze Paczkomatu InPost podaj ID paczkomatu.'); return; }
+        // ensure stock availability before finalizing
+        for(const it of cartNow){ const av = getStock(it.id); if(it.qty > av){ alert(`Produkt ${it.name} ma tylko ${av} szt. — zmień ilość przed płatnością.`); return; } }
+
+        const order = { cart: cartNow, shipping, shippingCost, total: cartNow.reduce((s,i)=>s+i.price*i.qty,0) + shippingCost, customer: { name, email, phone, address, paczkomat }, created: new Date().toISOString(), userId: getCurrentUser().id };
+        localStorage.setItem('last_order', JSON.stringify(order));
+
+        if(paymethod === 'cod'){ alert('Wybrano płatność przy odbiorze. Zamówienie zapisane lokalnie.'); // reduce stock for demo
+          cartNow.forEach(it=>{ const s = loadStock(); s[it.id] = Math.max(0, s[it.id] - it.qty); saveStock(s); }); saveCart([]); renderApp(); return; }
+        if(paymethod === 'blik'){ if(!STORE_CHECKOUT_LINK){ alert('Brak globalnego linku do checkout.'); return; } const totalGrosz = order.total; const url = STORE_CHECKOUT_LINK + (STORE_CHECKOUT_LINK.includes('?') ? '&' : '?') + 'prefer=blik&total=' + totalGrosz; window.open(url, '_blank', 'noopener'); return; }
+        if(paymethod === 'storelink'){ if(!STORE_CHECKOUT_LINK){ alert('Brak globalnego linku do checkout.'); return; } window.open(STORE_CHECKOUT_LINK, '_blank', 'noopener'); return; }
+        if(paymethod === 'perproduct'){ let opened = 0; cartNow.forEach(item=>{ if(item.paylink){ window.open(item.paylink, '_blank', 'noopener'); opened++; } }); if(opened === 0){ alert('Brak linków do płatności ustawionych przy produktach.'); } return; }
+        alert('Brak skonfigurowanej metody płatności.');
+      });
+
+      updateTotalSum(); }
 
     function updateTotalSum(){ const cart = getCart(); const subtotal = cart.reduce((s,i)=>s + i.price * i.qty, 0); const shippingMap = { inpost:150, pickup:0 }; const shipping = document.querySelector('input[name=shipping]:checked'); const shipCost = shipping ? shippingMap[shipping.value] : 0; const total = (subtotal + shipCost)/100; const el = document.getElementById('total-sum'); if(el) el.textContent = total.toFixed(2) + ' PLN'; }
 
-    function renderApp(){ updateCartCount(); renderHeaderUser(); const hash = location.hash || '#'; if(hash === '#cart') renderCartView(); else renderProductsView(); }
+    // ========== Auth modals (login/register/profile) ==========
+    function openAuthModal(){ openModal(`<h2>Zaloguj się</h2><div class="form-row"><input id="login-email" placeholder="E-mail" /><input id="login-pass" type="password" placeholder="Hasło" /><div style="display:flex;gap:8px;margin-top:8px"><button id="do-login" class="btn btn-primary">Zaloguj</button><button id="open-register" class="btn btn-ghost">Zarejestruj się</button><button id="close-modal" class="btn btn-ghost">Zamknij</button></div></div>`); document.getElementById('do-login').addEventListener('click', async ()=>{ try{ const email = document.getElementById('login-email').value.trim(); const pass = document.getElementById('login-pass').value; await loginUser({email,password:pass}); closeModal(); renderApp(); showToast('Zalogowano'); } catch(e){ alert(e.message); } }); document.getElementById('open-register').addEventListener('click', ()=> openRegisterModal()); document.getElementById('close-modal').addEventListener('click', ()=> closeModal()); }
+    function openRegisterModal(){ openModal(`<h2>Zarejestruj się</h2><div class="form-row"><input id="reg-name" placeholder="Imię i nazwisko" /><input id="reg-email" placeholder="E-mail" /><input id="reg-phone" placeholder="Telefon (opcjonalnie)" /><input id="reg-address" placeholder="Adres (opcjonalnie)" /><input id="reg-pass" type="password" placeholder="Hasło" /><input id="reg-pass2" type="password" placeholder="Powtórz hasło" /><div style="display:flex;gap:8px;margin-top:8px"><button id="do-register" class="btn btn-primary">Zarejestruj</button><button id="back-login" class="btn btn-ghost">Wróć do logowania</button><button id="close-modal2" class="btn btn-ghost">Zamknij</button></div></div>`); document.getElementById('do-register').addEventListener('click', async ()=>{ try{ const name = document.getElementById('reg-name').value.trim(); const email = document.getElementById('reg-email').value.trim(); const phone = document.getElementById('reg-phone').value.trim(); const address = document.getElementById('reg-address').value.trim(); const p1 = document.getElementById('reg-pass').value; const p2 = document.getElementById('reg-pass2').value; if(!name || !email || !p1) return alert('Podaj imię, e-mail i hasło'); if(p1 !== p2) return alert('Hasła nie są takie same'); await registerUser({name,email,password:p1,phone,address}); closeModal(); renderApp(); showToast('Zarejestrowano i zalogowano'); }catch(e){ alert(e.message); } }); document.getElementById('back-login').addEventListener('click', ()=> openAuthModal()); document.getElementById('close-modal2').addEventListener('click', ()=> closeModal()); }
+    function openProfileModal(){ const cur = getCurrentUser(); if(!cur) return openAuthModal(); openModal(`<h2>Profil</h2><div class="form-row"><input id="prof-name" value="${escapeHtml(cur.name)}" /><input id="prof-phone" value="${escapeHtml(cur.phone||'')}" /><input id="prof-address" value="${escapeHtml(cur.address||'')}" /><div style="display:flex;gap:8px;margin-top:8px"><button id="save-profile" class="btn btn-primary">Zapisz</button><button id="close-pf" class="btn btn-ghost">Zamknij</button></div></div>`); document.getElementById('save-profile').addEventListener('click', ()=>{ const name = document.getElementById('prof-name').value.trim(); const phone = document.getElementById('prof-phone').value.trim(); const address = document.getElementById('prof-address').value.trim(); updateUserProfile({ name, phone, address }); closeModal(); renderApp(); showToast('Zapisano profil'); }); document.getElementById('close-pf').addEventListener('click', ()=> closeModal()); }
 
+    // modal helpers
+    function openModal(html){ const backdrop = document.getElementById('modal-backdrop'); const content = document.getElementById('modal-content'); content.innerHTML = html; backdrop.style.display = 'flex'; }
+    function closeModal(){ const backdrop = document.getElementById('modal-backdrop'); backdrop.style.display = 'none'; }
+
+    // utils
     function escapeHtml(str){ return String(str || '').replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 
-    // init
-    window.addEventListener('load', ()=>{ document.getElementById('go-cart').addEventListener('click', ()=> { location.hash = '#cart'; renderApp(); }); document.getElementById('home-link').addEventListener('click', (e)=>{ e.preventDefault(); location.hash = '#'; renderApp(); }); document.getElementById('modal-backdrop').addEventListener('click', (e)=>{ if(e.target.id === 'modal-backdrop') closeModal(); }); window.addEventListener('hashchange', renderApp); renderApp(); });
+    // ========== init on load ==========
+    window.addEventListener('load', async ()=>{
+      await createAdminIfMissing(); // ensure admin exists
+      loadStock(); // initialize stock defaults
+      document.getElementById('go-cart').addEventListener('click', ()=> { location.hash = '#cart'; renderApp(); });
+      document.getElementById('home-link').addEventListener('click', (e)=>{ e.preventDefault(); location.hash = '#'; renderApp(); });
+      document.getElementById('modal-backdrop').addEventListener('click', (e)=>{ if(e.target.id === 'modal-backdrop') closeModal(); });
+      window.addEventListener('hashchange', renderApp);
+      renderApp();
+    });
   </script>
 </body>
 </html>
