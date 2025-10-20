@@ -1,22 +1,15 @@
 <!--
   Plik: index.html
-  Opis: Poprawiona i oczyszczona wersja statycznego sklepu na GitHub Pages.
-  Co zmieniłem/naprawiłem:
-    - Usunąłem duplikaty sekcji/elementów (jedno header, jedna sekcja produktów, SPA z hash #cart).
-    - Poprawiony fallback obrazków (jeśli nie załadują się z zewnętrznego źródła, pokaże się prosty SVG placeholder).
-    - Wyraźny button "Dodaj do koszyka" oraz obsługa koszyka (ilości, usuwanie, czyszczenie).
-    - Widok koszyka z wyborem dostawy (InPost/Odbiór) i wyboru metody płatności.
-    - Zmienna STORE_CHECKOUT_LINK do szybkiego podpięcia globalnego linku do checkout (PSP).
+  Zmiany dodane:
+    - Przyciski "Wyjdź z koszyka" (powrót do listy produktów).
+    - Formularz danych klienta w widoku koszyka (imię, e-mail, telefon, adres, pole dla Paczkomatu InPost gdy wybrana dostawa InPost).
+    - Dodana opcja płatności "BLIK". Jeśli używasz globalnego linku do checkout (STORE_CHECKOUT_LINK), skrypt doda parametr prefer=blik (niektóre PSP to ignorują — zależy od dostawcy).
+    - Walidacja: jeśli wybrano InPost, wymagane pole paczkomatu; jeśli brak danych klienta, pokazuje się alert.
+    - Przy zatwierdzeniu płatności zapis zamówienia (last_order) z danymi klienta i szczegółami wysyłki.
 
-  Jak używać:
-    1) Wgraj ten plik jako `index.html` do repo, które serwuje GitHub Pages (upewnij się, że nie masz innego index.html w folderze docs/).
-    2) Dodaj obrazy (logo.png lub folder img/) i zaktualizuj obiekty PRODUCTS w sekcji JS jeśli chcesz lokalne ścieżki.
-    3) Jeśli chcesz aby przycisk "Przejdź do płatności" przekierowywał bezpośrednio do Twojego checkoutu (np. Przelewy24), wklej tam link w zmiennej STORE_CHECKOUT_LINK.
-    4) Jeśli chcesz użyć Stripe/Serverless: ustaw STORE_CHECKOUT_LINK na endpoint, który tworzy sesję checkout.
-
-  Uwaga:
-    - Nie umieszczaj żadnych kluczy API w tym pliku, to statyczny publiczny plik. Jeśli potrzebujesz ukrytych kluczy, użyj serverless.
-    - Jeśli widzisz starą wersję w przeglądarce, zrób twarde odświeżenie (Ctrl+F5) i sprawdź czy repo nie zawiera innego index.html (np. w docs/).
+  Uwaga techniczna:
+    - Żeby BLIK działał realnie: użyj PSP/checkout który obsługuje BLIK (Przelewy24, PayU, Stripe z konfiguracją BLIK). Dla Stripe musisz tworzyć sesję Checkout po stronie serwera i dodać 'blik' do payment_method_types.
+    - Integracja z InPost (automatyczne nadawanie etykiet) wymaga po stronie serwera użycia API InPost / integratora (np. API InPost/Integrator). W tej statycznej wersji zbieramy dane paczkomatu i zapisujemy zamówienie lokalnie; na tej podstawie zrealizujesz wysyłkę ręcznie w panelu InPost lub przez serverless.
 -->
 
 <!doctype html>
@@ -30,8 +23,6 @@
     :root{--accent:#0b74de;--bg:#f7f8fb;--card:#fff;--muted:#6b7280}
     *{box-sizing:border-box}
     body{margin:0;font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:#111}
-
-    /* Header */
     header{display:flex;align-items:center;gap:16px;padding:12px 18px;background:linear-gradient(180deg,#fff,#fbfdff);border-bottom:1px solid #e6eef9;position:sticky;top:0;z-index:20}
     .logo-wrap{display:flex;align-items:center;gap:12px}
     .logo{width:56px;height:40px;display:flex;align-items:center;justify-content:center;background:#eef6ff;border-radius:8px;overflow:hidden}
@@ -40,14 +31,10 @@
     .spacer{flex:1}
     .cart-inline{font-size:14px;color:var(--muted);display:flex;gap:10px;align-items:center}
     .btn-small{padding:6px 10px;border-radius:8px;border:0;cursor:pointer;font-weight:600}
-
-    /* Layout */
     .container{max-width:1100px;margin:28px auto;padding:0 18px}
     .hero{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:18px}
     .hero h1{margin:0;font-size:24px}
     .products{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
-
-    /* Card */
     .card{background:var(--card);border-radius:12px;padding:12px;box-shadow:0 6px 18px rgba(17,24,39,0.04);display:flex;flex-direction:column;gap:10px}
     .thumb{height:150px;border-radius:8px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;overflow:hidden}
     .thumb img{width:100%;height:100%;object-fit:cover}
@@ -55,31 +42,22 @@
     .name{font-weight:600}
     .price{font-weight:700}
     .desc{color:var(--muted);font-size:13px}
-
     .actions{display:flex;gap:8px;align-items:center}
     .btn{padding:8px 12px;border-radius:8px;border:0;cursor:pointer;font-weight:600}
     .btn-primary{background:var(--accent);color:#fff}
     .btn-ghost{background:transparent;border:1px solid #e6eef9;color:var(--muted)}
-
-    /* Toast */
     .toast{position:fixed;left:50%;transform:translateX(-50%) translateY(8px);bottom:24px;background:#111;color:#fff;padding:10px 14px;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,0.15);opacity:0;pointer-events:none;transition:all .28s ease}
     .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-
-    /* Cart view */
     .cart-view{background:var(--card);padding:16px;border-radius:12px;box-shadow:0 6px 18px rgba(17,24,39,0.04)}
     .cart-list{display:flex;flex-direction:column;gap:12px}
     .cart-item{display:flex;gap:12px;align-items:center}
     .cart-item img{width:72px;height:56px;object-fit:cover;border-radius:8px}
     .qty{display:flex;gap:6px;align-items:center}
     .small{font-size:13px;color:var(--muted)}
-
+    .form-row{display:flex;gap:12px;flex-wrap:wrap}
+    .form-row input, .form-row select, textarea{padding:8px;border:1px solid #e6eef9;border-radius:8px}
     footer{margin:30px 0;color:var(--muted);text-align:center;font-size:13px}
-
-    @media (max-width:600px){
-      .hero{flex-direction:column;align-items:flex-start}
-      .logo{width:48px;height:36px}
-      .products{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
-    }
+    @media (max-width:600px){.hero{flex-direction:column;align-items:flex-start}.logo{width:48px;height:36px}.products{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}}
   </style>
 </head>
 <body>
@@ -96,77 +74,48 @@
         <div style="font-size:12px;color:var(--muted)">Statyczna strona — prosty koszyk</div>
       </div>
     </div>
-
     <div class="spacer"></div>
-
     <div class="cart-inline">
       <div>Koszyk: <strong id="cart-count">0</strong></div>
       <button class="btn-small btn-primary" id="go-cart">Przejdź do koszyka</button>
     </div>
   </header>
 
-  <main class="container" id="app">
-    <!-- Treść renderowana przez JavaScript -->
-  </main>
-
+  <main class="container" id="app"></main>
   <div class="toast" id="toast">Dodano do koszyka</div>
-
-  <footer style="max-width:1100px;margin:24px auto;padding:0 18px;">
-    © Twój sklep — zmień treść i zdjęcia na własne.
-  </footer>
+  <footer style="max-width:1100px;margin:24px auto;padding:0 18px;">© Twój sklep — zmień treść i zdjęcia na własne.</footer>
 
   <script>
-    // ===================== USTAWIENIA =====================
-    // Jeśli masz globalny link do checkout np. generowany w panelu PSP (Przelewy24/PayU) — wklej tutaj.
-    // Jeśli korzystasz z serverless (np. endpoint tworzy sesję Stripe) -> ustaw ten adres.
-    const STORE_CHECKOUT_LINK = '';
+    // ===== USTAWIENIA =====
+    const STORE_CHECKOUT_LINK = ''; // wklej tu globalny link do checkout (Przelewy24/PayU) lub endpoint serverless
 
-    // Produkty: id, name, price (w groszach), priceText, img (url lub lokalna ścieżka), paylink (opcjonalnie)
     const PRODUCTS = [
       { id: 'p1', name: 'Produkt 1', price: 1000, priceText: '10,00 PLN', img: 'img/product1.jpg', paylink: 'https://example.com/pay/product1' },
       { id: 'p2', name: 'Produkt 2', price: 2500, priceText: '25,00 PLN', img: 'img/product2.jpg', paylink: 'https://example.com/pay/product2' }
     ];
-    // ======================================================
+    // =======================
 
     const $ = s => document.querySelector(s);
     const $$ = s => Array.from(document.querySelectorAll(s));
-    const CART_KEY = 'shop_cart_v2';
-
-    // fallback svg data url
-    const SVG_PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
-      <svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
-        <rect width="100%" height="100%" fill="#f1f5f9"/>
-        <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#c7d2e6" font-family="Arial, sans-serif" font-size="28">Brak obrazu</text>
-      </svg>
-    `);
+    const CART_KEY = 'shop_cart_v3';
+    const SVG_PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600"><rect width="100%" height="100%" fill="#f1f5f9"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#c7d2e6" font-family="Arial, sans-serif" font-size="28">Brak obrazu</text></svg>`);
 
     function getCart(){ try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]'); } catch(e){ return []; } }
     function saveCart(c){ localStorage.setItem(CART_KEY, JSON.stringify(c)); updateCartCount(); }
-
     function updateCartCount(){ const cart = getCart(); const count = cart.reduce((s,i)=>s+i.qty,0); const el = document.getElementById('cart-count'); if(el) el.textContent = count; }
-
-    function addToCart(productId){ const prod = PRODUCTS.find(p=>p.id===productId); if(!prod) return; const cart = getCart(); const existing = cart.find(i=>i.id===productId); if(existing){ existing.qty += 1; } else { cart.push({ id: prod.id, name: prod.name, price: prod.price, priceText: prod.priceText, img: prod.img, paylink: prod.paylink, qty: 1 }); } saveCart(cart); showToast('Dodano do koszyka'); }
-
-    function changeQty(productId, delta){ const cart = getCart(); const item = cart.find(i=>i.id===productId); if(!item) return; item.qty += delta; if(item.qty < 1) item.qty = 1; saveCart(cart); renderApp(); }
-    function removeFromCart(productId){ let cart = getCart(); cart = cart.filter(i=>i.id !== productId); saveCart(cart); renderApp(); }
-
-    function clearCart(){ if(confirm('Wyczyścić koszyk?')){ saveCart([]); renderApp(); } }
-
     function showToast(txt){ const t = document.getElementById('toast'); t.textContent = txt; t.classList.add('show'); setTimeout(()=> t.classList.remove('show'), 1600); }
 
-    // Render products view
+    function addToCart(productId){ const prod = PRODUCTS.find(p=>p.id===productId); if(!prod) return; const cart = getCart(); const existing = cart.find(i=>i.id===productId); if(existing){ existing.qty += 1; } else { cart.push({ id: prod.id, name: prod.name, price: prod.price, priceText: prod.priceText, img: prod.img, paylink: prod.paylink, qty: 1 }); } saveCart(cart); showToast('Dodano do koszyka'); }
+    function changeQty(productId, delta){ const cart = getCart(); const item = cart.find(i=>i.id===productId); if(!item) return; item.qty += delta; if(item.qty < 1) item.qty = 1; saveCart(cart); renderApp(); }
+    function removeFromCart(productId){ let cart = getCart(); cart = cart.filter(i=>i.id !== productId); saveCart(cart); renderApp(); }
+    function clearCart(){ if(confirm('Wyczyścić koszyk?')){ saveCart([]); renderApp(); } }
+
     function renderProductsView(){
       const container = document.getElementById('app');
       container.innerHTML = `
-        <section class="hero">
-          <div>
-            <h1>Produkty</h1>
-            <p style="margin:6px 0;color:var(--muted)">Kliknij "Dodaj do koszyka" aby dodać produkt. Następnie przejdź do koszyka.</p>
-          </div>
-        </section>
+        <section class="hero"><div><h1>Produkty</h1><p style="margin:6px 0;color:var(--muted)">Kliknij "Dodaj do koszyka" aby dodać produkt. Następnie przejdź do koszyka.</p></div></section>
         <section class="products" id="products-grid"></section>
       `;
-
       const grid = document.getElementById('products-grid');
       PRODUCTS.forEach(p=>{
         const card = document.createElement('article');
@@ -182,13 +131,10 @@
         `;
         grid.appendChild(card);
       });
-
-      // attach events
       $$('.btn.btn-primary[data-id]').forEach(b=> b.addEventListener('click', ()=> addToCart(b.getAttribute('data-id'))));
       $$('.btn.btn-ghost[data-copy]').forEach(b=> b.addEventListener('click', ()=> { const url = b.getAttribute('data-copy'); if(!url){ alert('Brak linku do płatności dla tego produktu.'); return; } navigator.clipboard && navigator.clipboard.writeText(url).then(()=> showToast('Skopiowano link do płatności')) .catch(()=> prompt('Skopiuj link:', url)); }));
     }
 
-    // Render cart view
     function renderCartView(){
       const container = document.getElementById('app');
       const cart = getCart();
@@ -197,31 +143,36 @@
       const defaultShipping = shippingOptions[0].id;
 
       container.innerHTML = `
-        <section class="hero">
-          <div>
-            <h1>Koszyk</h1>
-            <p style="margin:6px 0;color:var(--muted)">Sprawdź koszyk, wybierz dostawę i płatność.</p>
-          </div>
-        </section>
-
+        <section class="hero"><div><h1>Koszyk</h1><p style="margin:6px 0;color:var(--muted)">Sprawdź koszyk, wybierz dostawę i płatność.</p></div></section>
         <div class="cart-view">
           <div style="display:flex;gap:20px;flex-direction:column">
-            <div class="cart-list" id="cart-list">
-              ${cart.length === 0 ? '<div class="small">Twój koszyk jest pusty.</div>' : ''}
-            </div>
+            <div class="cart-list" id="cart-list">${cart.length === 0 ? '<div class="small">Twój koszyk jest pusty.</div>' : ''}</div>
 
-            <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;margin-top:8px">
+            <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;margin-top:8px">
               <div style="min-width:260px">
                 <div class="small" style="margin-bottom:6px">Dostawa</div>
                 ${shippingOptions.map(s=>`<label style="display:block"><input type="radio" name="shipping" value="${s.id}" ${s.id===defaultShipping? 'checked':''}> ${s.name} (${(s.price/100).toFixed(2)} PLN)</label>`).join('')}
+                <div style="margin-top:10px" class="small">Dla Paczkomatu InPost wpisz ID/ulicę i numer paczkomatu w polu "Paczkomat" poniżej (w sekcji danych klienta).</div>
+              </div>
+
+              <div style="min-width:360px">
+                <div class="small" style="margin-bottom:6px">Dane klienta</div>
+                <div class="form-row" style="flex-direction:column">
+                  <input id="cust-name" placeholder="Imię i nazwisko" />
+                  <input id="cust-email" placeholder="E-mail" />
+                  <input id="cust-phone" placeholder="Telefon" />
+                  <input id="cust-address" placeholder="Adres (ulica, numer, kod pocztowy, miasto)" />
+                  <input id="cust-paczkomat" placeholder="Paczkomat InPost (np. 123XYZ) — wymagane przy InPost" style="display:none" />
+                </div>
               </div>
 
               <div style="min-width:320px">
                 <div class="small" style="margin-bottom:6px">Płatność</div>
                 <label style="display:block"><input type="radio" name="paymethod" value="storelink" checked> Globalny link do checkout</label>
+                <label style="display:block"><input type="radio" name="paymethod" value="blik"> BLIK (jeśli obsługuje Twój checkout)</label>
                 <label style="display:block"><input type="radio" name="paymethod" value="perproduct"> Linki przypisane do produktów</label>
                 <label style="display:block"><input type="radio" name="paymethod" value="cod"> Płatność przy odbiorze</label>
-                <div class="small" style="margin-top:6px;color:var(--muted)">Jeśli chcesz obsługiwać BLIK/online - wklej globalny link do checkout w zmiennej <code>STORE_CHECKOUT_LINK</code>.</div>
+                <div class="small" style="margin-top:6px;color:var(--muted)">Uwaga: aby BLIK działał, Twój PSP/checkout musi wspierać BLIK (Przelewy24, PayU lub Stripe z konfiguracją BLIK).</div>
               </div>
 
               <div style="margin-left:auto">
@@ -229,11 +180,12 @@
                 <div style="font-weight:700;font-size:18px" id="total-sum">${(subtotal/100).toFixed(2)} PLN</div>
                 <div style="margin-top:8px;display:flex;gap:8px">
                   <button class="btn btn-primary" id="checkout-btn">Przejdź do płatności</button>
+                  <button class="btn btn-ghost" id="exit-cart">Wyjdź z koszyka</button>
                   <button class="btn btn-ghost" id="clear-cart">Wyczyść koszyk</button>
                 </div>
               </div>
-            </div>
 
+            </div>
           </div>
         </div>
       `;
@@ -244,73 +196,88 @@
         el.className = 'cart-item';
         el.innerHTML = `
           <img src="${item.img}" alt="${item.name}" onerror="this.onerror=null;this.src='${SVG_PLACEHOLDER}';">
-          <div style="flex:1">
-            <div style="font-weight:700">${item.name}</div>
-            <div class="small">${item.priceText} × ${item.qty} = ${(item.price*item.qty/100).toFixed(2)} PLN</div>
-          </div>
-          <div class="qty">
-            <button class="btn-ghost" data-dec="${item.id}">-</button>
-            <div class="small">${item.qty}</div>
-            <button class="btn-ghost" data-inc="${item.id}">+</button>
-            <button class="btn-ghost" data-remove="${item.id}">Usuń</button>
-          </div>
+          <div style="flex:1"><div style="font-weight:700">${item.name}</div><div class="small">${item.priceText} × ${item.qty} = ${(item.price*item.qty/100).toFixed(2)} PLN</div></div>
+          <div class="qty"><button class="btn-ghost" data-dec="${item.id}">-</button><div class="small">${item.qty}</div><button class="btn-ghost" data-inc="${item.id}">+</button><button class="btn-ghost" data-remove="${item.id}">Usuń</button></div>
         `;
         list.appendChild(el);
       });
 
-      // events
       $$('[data-dec]').forEach(b=> b.addEventListener('click', ()=> { changeQty(b.getAttribute('data-dec'), -1); }));
       $$('[data-inc]').forEach(b=> b.addEventListener('click', ()=> { changeQty(b.getAttribute('data-inc'), +1); }));
       $$('[data-remove]').forEach(b=> b.addEventListener('click', ()=> { removeFromCart(b.getAttribute('data-remove')); }));
 
       document.getElementById('clear-cart').addEventListener('click', clearCart);
+      document.getElementById('exit-cart').addEventListener('click', ()=> { location.hash = '#'; renderApp(); });
 
-      document.getElementById('checkout-btn').addEventListener('click', ()=> {
+      // show/hide paczkomat input
+      $$('input[name=shipping]').forEach(r=> r.addEventListener('change', ()=>{
+        const paczInput = document.getElementById('cust-paczkomat');
+        const val = document.querySelector('input[name=shipping]:checked').value;
+        paczInput.style.display = val === 'inpost' ? 'block' : 'none';
+        updateTotalSum();
+      }));
+
+      // checkout
+      document.getElementById('checkout-btn').addEventListener('click', ()=>{
         const paymethod = document.querySelector('input[name=paymethod]:checked').value;
         const shipping = document.querySelector('input[name=shipping]:checked').value;
-        const shippingCost = shippingOptions.find(s=>s.id===shipping).price;
+        const shippingCost = shippingOptions.find(s=>s.id===shipping).price || 0;
         const cartNow = getCart();
-        if(cartNow.length === 0) { alert('Koszyk jest pusty.'); return; }
+        if(cartNow.length === 0){ alert('Koszyk jest pusty.'); return; }
 
+        // collect customer data and validate
+        const name = document.getElementById('cust-name').value.trim();
+        const email = document.getElementById('cust-email').value.trim();
+        const phone = document.getElementById('cust-phone').value.trim();
+        const address = document.getElementById('cust-address').value.trim();
+        const paczkomat = document.getElementById('cust-paczkomat').value.trim();
+
+        if(!name || !email || !phone){ alert('Wypełnij proszę: imię, e-mail i telefon.'); return; }
+        if(shipping === 'inpost' && !paczkomat){ alert('Przy wyborze Paczkomatu InPost podaj ID paczkomatu w polu "Paczkomat".'); return; }
+
+        // save local order for manual fulfillment
+        const order = { cart: cartNow, shipping, shippingCost, total: cartNow.reduce((s,i)=>s+i.price*i.qty,0) + shippingCost, customer: { name, email, phone, address, paczkomat }, created: new Date().toISOString() };
+        localStorage.setItem('last_order', JSON.stringify(order));
+
+        // handle payment flows
         if(paymethod === 'cod'){
-          alert('Wybrałeś płatność przy odbiorze. Zamówienie zostało zapisane lokalnie. Skontaktuj się z klientem, aby potwierdzić.');
-          localStorage.setItem('last_order', JSON.stringify({ cart: cartNow, shipping, shippingCost, total: cartNow.reduce((s,i)=>s+i.price*i.qty,0) + shippingCost }));
-          saveCart([]);
-          location.hash = '#';
-          renderApp();
+          alert('Wybrano płatność przy odbiorze. Zamówienie zapisane lokalnie.'); saveCart([]); location.hash = '#'; renderApp(); return;
+        }
+
+        if(paymethod === 'blik'){
+          // prefer BLIK on your checkout if provider supports query param 'prefer=blik'
+          if(!STORE_CHECKOUT_LINK){ alert('Brak globalnego linku do checkout. Możesz ustawić go w zmiennej STORE_CHECKOUT_LINK lub przypisać paylink do produktów.'); return; }
+          const totalGrosz = order.total;
+          const url = STORE_CHECKOUT_LINK + (STORE_CHECKOUT_LINK.includes('?') ? '&' : '?') + 'prefer=blik&total=' + totalGrosz;
+          window.open(url, '_blank', 'noopener');
           return;
         }
 
-        if(STORE_CHECKOUT_LINK && paymethod === 'storelink'){
-          window.open(STORE_CHECKOUT_LINK, '_blank', 'noopener');
-          return;
+        if(paymethod === 'storelink'){
+          if(!STORE_CHECKOUT_LINK){ alert('Brak globalnego linku do checkout.'); return; }
+          window.open(STORE_CHECKOUT_LINK, '_blank', 'noopener'); return;
         }
 
         if(paymethod === 'perproduct'){
           let opened = 0;
-          cartNow.forEach(item=>{
-            if(item.paylink){ window.open(item.paylink, '_blank', 'noopener'); opened++; }
-          });
+          cartNow.forEach(item=>{ if(item.paylink){ window.open(item.paylink, '_blank', 'noopener'); opened++; } });
           if(opened === 0){ alert('Brak linków do płatności ustawionych przy produktach.'); }
           return;
         }
 
-        alert('Brak skonfigurowanej metody płatności. Ustaw STORE_CHECKOUT_LINK lub przypisz paylink do produktów.');
+        alert('Brak skonfigurowanej metody płatności.');
       });
 
       updateTotalSum();
     }
 
-    function updateTotalSum(){ const cart = getCart(); const subtotal = cart.reduce((s,i)=>s + i.price * i.qty, 0); const shippingOptions = { inpost:150, pickup:0 }; const shipping = document.querySelector('input[name=shipping]:checked'); const shipCost = shipping ? shippingOptions[shipping.value] : 0; const total = (subtotal + shipCost)/100; const el = document.getElementById('total-sum'); if(el) el.textContent = total.toFixed(2) + ' PLN'; }
+    function updateTotalSum(){ const cart = getCart(); const subtotal = cart.reduce((s,i)=>s + i.price * i.qty, 0); const shippingMap = { inpost:150, pickup:0 }; const shipping = document.querySelector('input[name=shipping]:checked'); const shipCost = shipping ? shippingMap[shipping.value] : 0; const total = (subtotal + shipCost)/100; const el = document.getElementById('total-sum'); if(el) el.textContent = total.toFixed(2) + ' PLN'; }
 
     function renderApp(){ updateCartCount(); const hash = location.hash || '#'; if(hash === '#cart') renderCartView(); else renderProductsView(); }
 
     // init
     window.addEventListener('load', ()=>{
-      const logoImg = document.getElementById('logo-img');
-      const logoInit = document.getElementById('logo-initials');
-      if (logoImg && logoImg.style.display === 'none') { logoInit.style.display = 'block'; }
-
+      const logoImg = document.getElementById('logo-img'); const logoInit = document.getElementById('logo-initials'); if (logoImg && logoImg.style.display === 'none') { logoInit.style.display = 'block'; }
       document.getElementById('go-cart').addEventListener('click', ()=> { location.hash = '#cart'; renderApp(); });
       document.getElementById('home-link').addEventListener('click', (e)=>{ e.preventDefault(); location.hash = '#'; renderApp(); });
       window.addEventListener('hashchange', renderApp);
